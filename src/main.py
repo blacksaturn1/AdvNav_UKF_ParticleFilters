@@ -12,7 +12,9 @@ parent_dir_script = os.path.dirname(script_dir)
 print(f"Parent directory of the script: {parent_dir_script}")
 
 class MeasurementData:
-    def __init__(self):
+    def __init__(self,ax=None, fig=None):
+        self.ax = ax
+        self.fig = fig
         self.data_dir = pjoin(parent_dir_script, 'data', 'data')
         self.camera_matrix = np.array([
             [314.1779, 0.0, 199.4848],
@@ -143,10 +145,10 @@ class MeasurementData:
             if np.any(imagePoints < 0):
                 print(f"Warning: Invalid image points for AprilTag ID {data['id']}. Skipping this tag.")
                 return None,None
-            # Ensure imagePoints is a 2D array of shape (4, 2)
-            if imagePoints.shape[0] != 4 or imagePoints.shape[1] != 2:
-                print(f"Error: Invalid image points shape for AprilTag ID {data['id']}. Expected (4, 2), got {imagePoints.shape}.")
-                return None,None
+            # # Ensure imagePoints is a 2D array of shape (4, 2)
+            # if imagePoints.shape[0] != 4 or imagePoints.shape[1] != 2:
+            #     print(f"Error: Invalid image points shape for AprilTag ID {data['id']}. Expected (4, 2), got {imagePoints.shape}.")
+            #     return None,None
             
             retval, rvec, tvec = cv2.solvePnP(objectPoints, imagePoints, self.camera_matrix, self.dist_coeffs)
             if retval is None:
@@ -155,13 +157,14 @@ class MeasurementData:
             
             # If solvePnP is successful, it returns the rotation vector (rvec) and translation vector (tvec)``
             rotM, _ = cv2.Rodrigues(rvec)
-            
-            orientation_vec = self.apply_transform(self.transform_from_camera_to_drone, tvec)  # Apply the camera to world transform
-            
-            if np.any(tvec<0):
-                # Check if the translation vector has any negative values
-                print(f"Warning: Invalid translation vector for AprilTag ID {data['id']}. Skipping this tag.")
-                return None, None  # Skip this tag if the translation vector is invalid
+            cameraPosition = -np.matrix(rotM).T * np.matrix(tvec)
+
+            # orientation_vec = self.apply_transform(self.transform_from_camera_to_drone, tvec)  # Apply the camera to world transform
+            cameraPosition = np.clip(cameraPosition, 0, None)  # Clip the camera position to avoid negative values
+            # if np.any(cameraPosition<-0.05):
+            #     # Check if the translation vector has any negative values
+            #     print(f"Warning: Invalid translation vector for AprilTag ID {data['id']}. Skipping this tag.")
+            #     return None, None  # Skip this tag if the translation vector is invalid
             processed_data={
                 'image': image1,
                 'id': data['id'],
@@ -169,10 +172,11 @@ class MeasurementData:
                 'rvec': rvec,  # Rotation vector
                 'tvec': tvec,   # Translation vector
                 'rotM': rotM,
-                'orientation_vec': orientation_vec  # This is the position of the object in the world frame
+                'cameraPosition': cameraPosition  # This is the position of the object in the world frame
             }
         else:
             # Process multiple AprilTags
+            
             for i,tag_id in enumerate(data['id']):
                 objectPoints = self.get_corners_world_frame(tag_id)
                 p1=np.array([data['p1'][0][i],data['p1'][1][i]])  
@@ -187,15 +191,16 @@ class MeasurementData:
                 if retval is None or retval == False:
                     print(f"Error: solvePnP failed for AprilTag ID {tag_id}. Skipping this tag.")
                     continue
-                if np.any(tvec<0):
-                    # Check if the translation vector has any negative values
-                    print(f"Warning: Invalid translation vector for AprilTag ID {tag_id}. Skipping this tag.")
-                    #return None, None  # Skip this tag if the translation vector is invalid
-                    continue
-                rotM, _ = cv2.Rodrigues(rvec)
                 
-                orientation_vec = self.apply_transform(self.transform_from_camera_to_drone, tvec)  # Apply the camera to world transform
+                rotM, _ = cv2.Rodrigues(rvec)
 
+                cameraPosition = -np.matrix(rotM).T * np.matrix(tvec)
+                cameraPosition = np.clip(cameraPosition, 0, None)  # Clip the camera position to avoid negative values
+                # orientation_vec = self.apply_transform(self.transform_from_camera_to_drone, tvec)  # Apply the camera to world transform
+                # if np.any(cameraPosition < 0):
+                #     # Check if the cameraPosition vector has any negative values
+                #     print(f"Warning: Invalid cameraPosition vector for AprilTag ID {tag_id}. Skipping this tag.")
+                #     continue
                 processed_data = {
                     'image': image1,
                     'id': data['id'],
@@ -203,15 +208,15 @@ class MeasurementData:
                     'rvec': rvec,  # Rotation vector
                     'tvec': tvec,   # Translation vector
                     'rotM': rotM,
-                    'orientation_vec': orientation_vec  # This is the position of the object in the world frame
+                    'cameraPosition': cameraPosition  # This is the position of the object in the world frame
                 }
                 break # Only process the first tag in the list for demonstration purposes
         # return processed_data['orientation_vec'],processed_data['rotM']
-        if 'orientation_vec' not in processed_data or processed_data['orientation_vec'] is None:
+        if 'cameraPosition' not in processed_data or processed_data['cameraPosition'] is None:
             print("****************************Error: No valid orientation vector found.")
             return None, None
-        return processed_data['orientation_vec'],processed_data['rotM']
-
+        return processed_data['cameraPosition'],processed_data['rotM']
+    
     def checkMatlabData(self):
         """
         Check if the MATLAB data file exists.
@@ -296,6 +301,39 @@ class MeasurementData:
         
         return transform
     
+    def plot_trajectory_estimated(self,data):
+        """
+        Plot the trajectory of the measurement data.
+        :param data: Measurement data.
+        """
+        data_np = np.array(data).squeeze().T
+
+        # data2 = data.T
+        # data2 = data2.squeeze()
+        # Define the trajectory data (example)
+        x = data_np[0,:]
+        y = data_np[1,:]
+        z = data_np[2,:]
+        
+        # Plot the trajectory
+        # fig = plt.figure(figsize=(8, 6))
+        # ax = self.fig.add_subplot(222, projection='3d')  # Use the existing ax if provided
+        # Plot the trajectory
+        ax.plot(x, y, z, label='Trajectory', color='r', linewidth=1  )  # Set color and linewidth for better visibility
+
+        # Set labels and title
+        ax.set_xlabel('X-axis')
+        ax.set_ylabel('Y-axis')
+        ax.set_zlabel('Z-axis')
+        ax.set_title('3D Trajectory Plot')
+
+        # Add a legend
+        ax.legend()
+
+        # Show the plot
+        plt.show()
+
+    
 def loadMatlabData(file_name):
     measurement_data = MeasurementData()
     mat_contents = measurement_data.loadMatlabData(file_name)
@@ -325,40 +363,41 @@ def check_data():
 
 def plot_trajectory_0():
     data,_ = loadMatlabData('studentdata0.mat')
-    plot_trajectory_vicon(data)
+    ax, fig = plot_trajectory_vicon(data)
+    return ax, fig
 
 
-def plot_trajectory_estimated(data):
-    """
-    Plot the trajectory of the measurement data.
-    :param data: Measurement data.
-    """
-    data_np = np.array(data).squeeze().T
+# def plot_trajectory_estimated(data):
+#     """
+#     Plot the trajectory of the measurement data.
+#     :param data: Measurement data.
+#     """
+#     data_np = np.array(data).squeeze().T
 
-    # data2 = data.T
-    # data2 = data2.squeeze()
-    # Define the trajectory data (example)
-    x = data_np[0,:]
-    y = data_np[1,:]
-    z = data_np[2,:]
+#     # data2 = data.T
+#     # data2 = data2.squeeze()
+#     # Define the trajectory data (example)
+#     x = data_np[0,:]
+#     y = data_np[1,:]
+#     z = data_np[2,:]
     
-    # Plot the trajectory
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    # Plot the trajectory
-    ax.plot(x, y, z, label='Trajectory')
+#     # Plot the trajectory
+#     fig = plt.figure(figsize=(8, 6))
+#     ax = fig.add_subplot(111, projection='3d')
+#     # Plot the trajectory
+#     ax.plot(x, y, z, label='Trajectory')
 
-    # Set labels and title
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
-    ax.set_zlabel('Z-axis')
-    ax.set_title('3D Trajectory Plot')
+#     # Set labels and title
+#     ax.set_xlabel('X-axis')
+#     ax.set_ylabel('Y-axis')
+#     ax.set_zlabel('Z-axis')
+#     ax.set_title('3D Trajectory Plot')
 
-    # Add a legend
-    ax.legend()
+#     # Add a legend
+#     ax.legend()
 
-    # Show the plot
-    plt.show()
+#     # Show the plot
+#     plt.show()
 
 
 def plot_trajectory_vicon(data):
@@ -375,7 +414,7 @@ def plot_trajectory_vicon(data):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
     # Plot the trajectory
-    ax.plot(x, y, z, label='Trajectory')
+    ax.plot(x, y, z, label='Actual', color='b', linewidth=2)  # Set color and linewidth for better visibility
 
     # Set labels and title
     ax.set_xlabel('X-axis')
@@ -387,7 +426,9 @@ def plot_trajectory_vicon(data):
     ax.legend()
 
     # Show the plot
-    plt.show()
+    # plt.show()
+    return ax,fig
+    
 
 def plot_trajectory_test():
     """
@@ -457,24 +498,25 @@ def tests():
     check_data()
     # mat_contents['data'][6]['id']
 
-def process_measurement_data(file_name):
+def process_measurement_data(file_name,ax,fig):
     """
     Process the measurement data from the specified MATLAB file.
     :param file_name: Name of the MATLAB file to process.
     :return: Processed data.
     """
-    measurement_data = MeasurementData()
+    measurement_data = MeasurementData(ax,fig)
     mat_contents = measurement_data.loadMatlabData(file_name)
     position_data, orientation_data = measurement_data.process_measurement_data()
 
-    plot_trajectory_estimated(position_data)  # Plot the trajectory
+    measurement_data.plot_trajectory_estimated(position_data)  # Plot the estimated trajectory
+    # plot_trajectory_estimated(position_data)  # Plot the trajectory
 
 
     return position_data
 
 if __name__ == "__main__":
     # get_world_corners_test()
-    plot_trajectory_0()   
-    process_measurement_data('studentdata5.mat')  # Process measurement data from studentdata0.mat
+    ax,fig= plot_trajectory_0()   
+    process_measurement_data('studentdata0.mat',ax,fig)  # Process measurement data from studentdata0.mat
     #main()
     #tests()  # Run all tests
