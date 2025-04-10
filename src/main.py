@@ -437,13 +437,6 @@ def check_data():
     print("-----------------------------------------------------")
     checkMatlabData('studentdata7.mat')
 
-# def plot_trajectory_0():
-#     data,_ = loadMatlabData('studentdata0.mat')
-#     ax, fig = plot_trajectory_vicon(data)
-#     return ax, fig
-
-
-
 def plot_trajectory_test():
     """
     Plot the trajectory of the measurement data.
@@ -560,7 +553,7 @@ def process_measurement_data(file_name):
 if __name__ == "__main__":
     
     # process_measurement_data('studentdata0.mat')
-    process_measurement_data('studentdata1.mat')
+    process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata2.mat')
     # process_measurement_data('studentdata3.mat')
