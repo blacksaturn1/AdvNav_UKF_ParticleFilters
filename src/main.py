@@ -1,5 +1,7 @@
 from os.path import dirname, join as pjoin
 import scipy.io as sio
+import scipy.interpolate
+from scipy.interpolate import LinearNDInterpolator
 import os
 import cv2
 import numpy as np
@@ -412,6 +414,105 @@ class MeasurementData:
         # Show the plot
         plt.show()
         return fig,axs
+    
+    def interpolate(self,time_target,t1, t2,y1, y2):
+        """
+        Interpolate the data to match the target time.
+        :param x_target: Target time values.
+        :param y_target: Target data values.
+        :param x_source: Source time values.
+        :param y_source: Source data values.
+        :return: Interpolated data.
+        """
+        interpolated_data = y1 + ((time_target - t1) * (y2 - y1) / (t2 - t1))
+        return interpolated_data
+
+    def calculate_covariance(self):
+        """
+        Calculate the covariance of the estimated trajectory.
+        :return: Covariance matrix.
+        """
+        if self.results_np is None:
+            print("No results available to calculate covariance.")
+            return None
+        # Extract position data
+        positions = self.results_np[:, 0:3]
+        
+        # self.actual_vicon_aligned_np 
+        # scipy.interpolate.splprep(self.results_np.T.squeeze()[6,:], self.actual_vicon_np[-1,:], self.actual_vicon_np[0:3,:])
+        self.actual_vicon_aligned_np = None
+        for idx,x_measurement_model in enumerate(self.results_np[:, -1]):
+            x = float(x_measurement_model)
+            min_idx = np.argmin(self.actual_vicon_np[-1,:] < x)
+            if min_idx == 0:
+                continue
+            x_interpolated = self.interpolate(x,
+                    self.actual_vicon_np[-1,min_idx],
+                    self.actual_vicon_np[-1,min_idx+1],
+                    self.actual_vicon_np[0,min_idx],
+                    self.actual_vicon_np[0,min_idx+1])
+            y_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[1,min_idx],
+                self.actual_vicon_np[1,min_idx+1])
+            z_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[2,min_idx],
+                self.actual_vicon_np[2,min_idx+1])
+            roll_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[3,min_idx],
+                self.actual_vicon_np[3,min_idx+1])
+            pitch_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[4,min_idx],
+                self.actual_vicon_np[4,min_idx+1])
+            yaw_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[5,min_idx],
+                self.actual_vicon_np[5,min_idx+1])
+            new_row = [x_interpolated,y_interpolated,z_interpolated,
+                roll_interpolated,
+                pitch_interpolated,
+                yaw_interpolated,x]
+            
+            self.actual_vicon_aligned_np = new_row if self.actual_vicon_aligned_np is None \
+                else np.vstack((self.actual_vicon_aligned_np,new_row))
+
+        self.diff_matrix = self.actual_vicon_aligned_np.T[0:6,:] - self.results_np.T.squeeze()[0:6,:] 
+        temp_matrix = None
+        for idx, row in enumerate(self.diff_matrix.T):
+            v = np.matrix(row).T @ np.matrix(row)
+            if temp_matrix is None:
+                temp_matrix = v
+            else:    
+                temp_matrix += v
+        self.cov_matrix = temp_matrix / (self.diff_matrix.shape[1]-1)
+        print("Covariance Matrix:")
+        print(self.cov_matrix)
+
+        # Check if symmetric matrix
+        if np.allclose(self.cov_matrix, self.cov_matrix.T):
+            print("Covariance matrix is symmetric.")
+        else:
+            print("Covariance matrix is not symmetric.")
+
+        # Check if positive definite
+        eigenvalues = np.linalg.eigvals(self.cov_matrix)
+        if np.all(eigenvalues > 0):
+            print("Covariance matrix is positive definite.")
+        else:
+            print("Covariance matrix is not positive definite.")
+
+        return self.cov_matrix
+
+
+
 ##########################################################################
     
 def loadMatlabData(file_name):
@@ -550,6 +651,7 @@ def process_measurement_data(file_name):
     measurement_data.plot_trajectory_vicon()  # Plot the actual trajectory
     measurement_data.plot_trajectory_estimated()  # Plot the estimated trajectory
     measurement_data.plot_orientation()  # Plot the roll trajectory
+    measurement_data.calculate_covariance()
     
 
     
