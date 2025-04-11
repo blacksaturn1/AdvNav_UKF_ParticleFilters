@@ -36,8 +36,9 @@ class MeasurementData:
         # print("Camera to World Transform Matrix:")
         # print(self.transform_from_camera_to_drone)
 
-        self.position_data = []
-        self.orientation_data = []
+        # self.position_data = []
+        # self.orientation_data = []
+        self.actual_vicon_np = None
     
     def loadMatlabData(self,file_name):
         """
@@ -47,6 +48,7 @@ class MeasurementData:
         """
         mat_fname = pjoin(self.data_dir, file_name)
         self.mat_contents = sio.loadmat(mat_fname, simplify_cells=True)
+        self.actual_vicon_np = np.vstack((self.mat_contents['vicon'], np.array([self.mat_contents['time']])))
         return self.mat_contents
     
     def get_corners_world_frame(self,april_tag_index):
@@ -312,10 +314,10 @@ class MeasurementData:
         :param data: Measurement data.
         """
         # Define the trajectory data (example)
-        data = self.mat_contents
-        x = data['vicon'][0, :]
-        y = data['vicon'][1, :] 
-        z = data['vicon'][2, :]
+        
+        x = self.actual_vicon_np[0, :]
+        y = self.actual_vicon_np[1, :] 
+        z = self.actual_vicon_np[2, :]
         
         # Plot the trajectory
         fig = plt.figure(figsize=(12, 8))
@@ -341,13 +343,14 @@ class MeasurementData:
         Plot the trajectory of the measurement data.
         :param data: Measurement data.
         """
-        data = self.position_data
-        data_np = np.array(data).squeeze().T
+        # data = self.position_data
+        # self.measurement_position_data_np = np.array(data).squeeze().T
 
         # Define the trajectory data (example)
-        x = data_np[0,:]
-        y = data_np[1,:]
-        z = data_np[2,:]
+        # self.results_np.T.squeeze()[6,:]
+        x = self.results_np.T.squeeze()[0,:]
+        y = self.results_np.T.squeeze()[1,:]
+        z = self.results_np.T.squeeze()[2,:]
         
         # Plot the trajectory
         self.ax.plot(x, y, z, label='Estimated', color='r', linewidth=1, linestyle='-' )  # Set color and linewidth for better visibility
@@ -370,11 +373,12 @@ class MeasurementData:
         Plot the trajectory of the measurement data.
         :param data: Measurement data.
         """
-        x = self.mat_contents['time']
-        data = self.mat_contents
-        roll  = data['vicon'][3, :]
-        pitch = data['vicon'][4, :]
-        yaw   = data['vicon'][5, :]
+        
+        roll  = self.actual_vicon_np[3, :]
+        pitch = self.actual_vicon_np[4, :]
+        yaw   = self.actual_vicon_np[5, :]
+        x = self.actual_vicon_np[-1, :]
+        
         
         # Plot the trajectory
         fig, axs = plt.subplots(3, 1, figsize=(16, 16))
