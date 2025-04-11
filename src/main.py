@@ -25,21 +25,7 @@ class MeasurementData:
             [0.0, 0.0, 1.0]
         ], dtype=np.float64)
         self.dist_coeffs = np.array([-0.438607, 0.248625, 0.00072, -0.000476, -0.0911], dtype=np.float64)
-        # self.camera_to_world_transform = np.array([
-        #     [1.0, 0.0, 0.0, -0.04],  # Rotation matrix (identity)
-        #     [0.0, 1.0, 0.0, 0.0],  # Rotation matrix (identity)
-        #     [0.0, 0.0, 1.0, -0.03],  # Translation along Z-axis (example value)
-        #     [0.0, 0.0, 0.0, 1.0]   # Homogeneous coordinate
-        # ], dtype=np.float64)
-        # = np.linalg.inv(self.camera_to_world_transform)  # Inverse of the camera to world transform
-        # self.transform_from_camera_to_drone = self.homogeneous_matrix(-0.04, 0.0, -0.03, np.pi, 0, np.pi/4)  # Example values for translation and rotation
-        # self.transform_from_camera_to_drone = self.homogeneous_matrix(-0.04, 0.0, -0.03, 0, 0, 0)  # Example values for translation and rotation
         
-        # print("Camera to World Transform Matrix:")
-        # print(self.transform_from_camera_to_drone)
-
-        # self.position_data = []
-        # self.orientation_data = []
         self.actual_vicon_np = None
     
     def loadMatlabData(self,file_name):
