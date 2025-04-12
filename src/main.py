@@ -101,7 +101,7 @@ class MeasurementData:
                 print("Warning: Pose estimation failed for the current data item. Skipping this item.")
                 continue  # Skip this item if pose estimation failed
             
-            result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
+            result= np.hstack((np.array(position).squeeze(),orientation,data['t']),dtype=np.float64)
             self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
 
         return self.results_np
@@ -410,11 +410,7 @@ class MeasurementData:
         if self.results_np is None:
             print("No results available to calculate covariance.")
             return None
-        # Extract position data
-        positions = self.results_np[:, 0:3]
         
-        # self.actual_vicon_aligned_np 
-        # scipy.interpolate.splprep(self.results_np.T.squeeze()[6,:], self.actual_vicon_np[-1,:], self.actual_vicon_np[0:3,:])
         self.actual_vicon_aligned_np = None
         for idx,x_measurement_model in enumerate(self.results_np[:, -1]):
             x = float(x_measurement_model)
