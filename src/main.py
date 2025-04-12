@@ -65,7 +65,7 @@ class MeasurementData:
         # Adjust for columns 6 and 7
         if col >= 3:  # For columns 6 and 7
             p1_y+=difference  # Adjust y coordinate for columns 6 and 7
-        if col >= 5:  # For columns 6 and 7
+        if col >= 6:  # For columns 6 and 7
             p1_y+=difference  # Adjust y coordinate for columns 6 and 7
         p2_y = p1_y+square_size  # Y coordinate for the second point (bottom right)
         p3_y = p2_y  # Y coordinate for the  point (upper right)
@@ -87,36 +87,23 @@ class MeasurementData:
         """
         
         position = None
-        last_position = None
-        self.position_data = []
-        self.orientation_data = []
+        
         self.time = []
         self.results_np = None
         for data in self.mat_contents['data']:
             if isinstance(data['id'],np.ndarray):
+                # This has no April tags fround in the image
                 if len(data['id']) == 0:
-                    if len(self.position_data) == 0:
-                        continue
-                    else:
-                        continue
-                        # If there are no more AprilTags, return the processed data
-                        self.position_data.append(last_position)  # Append the last estimate pose result to processed data
-                        self.orientation_data.append(last_position)  
-                        continue  # Skip to the next iteration if there are no AprilTags detected
-                    
+                    continue
             # Estimate the pose for each item in the data
             position,orientation = self.estimate_pose(data)  # Estimate the pose for each item in the data   
             if position is None or orientation is None:
                 print("Warning: Pose estimation failed for the current data item. Skipping this item.")
                 continue  # Skip this item if pose estimation failed
-            last_position = position  # Store the last valid position
-            self.position_data.append(position)  # Append the last estimate pose result to processed data
-            self.orientation_data.append(orientation)
-            self.time.append(data['t'])
-            result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
             
-
+            result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
             self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
+
         return self.results_np
     ###########################################################################################
 
@@ -126,8 +113,10 @@ class MeasurementData:
             r_world_to_camera, _ = cv2.Rodrigues(rvec)
             rx, rz = np.pi, np.pi/4
             # r_world_to_camera = np.linalg.inv(r_world_to_camera)
-            rotation_x = self.rotation_matrix_x(rx)[0:3,0:3]
-            rotation_z = self.rotation_matrix_z(rz)[0:3,0:3]
+            # rotation_x = self.rotation_matrix_x(rx)[0:3,0:3]
+            # rotation_z = self.rotation_matrix_z(rz)[0:3,0:3]
+            rotation_x = R.from_euler('x', rx, degrees=False).as_matrix()
+            rotation_z = R.from_euler('z', rz, degrees=False).as_matrix()
             r_camera_to_robot = rotation_x @ rotation_z
             t_camera_to_robot = np.array([[-0.04], [0.0], [-0.03]])
             
@@ -224,47 +213,47 @@ class MeasurementData:
                     cv2.imshow('Image', image1)
                     cv2.waitKey(3*1000 )
                     cv2.destroyAllWindows()
-    def rotation_matrix_x(self,angle):
-        """Creates a rotation matrix around the x-axis."""
-        c = np.cos(angle)
-        s = np.sin(angle)
-        return np.array([
-            [1, 0, 0, 0],
-            [0, c, -s, 0],
-            [0, s, c, 0],
-            [0, 0, 0, 1]
-        ])
+    # def rotation_matrix_x(self,angle):
+    #     """Creates a rotation matrix around the x-axis."""
+    #     c = np.cos(angle)
+    #     s = np.sin(angle)
+    #     return np.array([
+    #         [1, 0, 0, 0],
+    #         [0, c, -s, 0],
+    #         [0, s, c, 0],
+    #         [0, 0, 0, 1]
+    #     ])
 
-    def rotation_matrix_y(self,angle):
-        """Creates a rotation matrix around the y-axis."""
-        c = np.cos(angle)
-        s = np.sin(angle)
-        return np.array([
-            [c, 0, s, 0],
-            [0, 1, 0, 0],
-            [-s, 0, c, 0],
-            [0, 0, 0, 1]
-        ])
+    # def rotation_matrix_y(self,angle):
+    #     """Creates a rotation matrix around the y-axis."""
+    #     c = np.cos(angle)
+    #     s = np.sin(angle)
+    #     return np.array([
+    #         [c, 0, s, 0],
+    #         [0, 1, 0, 0],
+    #         [-s, 0, c, 0],
+    #         [0, 0, 0, 1]
+    #     ])
 
-    def rotation_matrix_z(self,angle):
-        """Creates a rotation matrix around the z-axis."""
-        c = np.cos(angle)
-        s = np.sin(angle)
-        return np.array([
-            [c, -s, 0, 0],
-            [s, c, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-        ])
-    def apply_transform(self,transform, x):
-        '''
-        https://alexsm.com/homogeneous-transforms/
-        '''
-        x_h = np.ones((x.shape[0] + 1, x.shape[1]), dtype=x.dtype)
-        x_h[:-1, :] = x
-        x_t = np.dot(transform, x_h)
-        # return x_t[:3] / x_t[-1]
-        return x_t[:3]
+    # def rotation_matrix_z(self,angle):
+    #     """Creates a rotation matrix around the z-axis."""
+    #     c = np.cos(angle)
+    #     s = np.sin(angle)
+    #     return np.array([
+    #         [c, -s, 0, 0],
+    #         [s, c, 0, 0],
+    #         [0, 0, 1, 0],
+    #         [0, 0, 0, 1]
+    #     ])
+    # def apply_transform(self,transform, x):
+    #     '''
+    #     https://alexsm.com/homogeneous-transforms/
+    #     '''
+    #     x_h = np.ones((x.shape[0] + 1, x.shape[1]), dtype=x.dtype)
+    #     x_h[:-1, :] = x
+    #     x_t = np.dot(transform, x_h)
+    #     # return x_t[:3] / x_t[-1]
+    #     return x_t[:3]
 
     '''
     def translation_matrix(self,tx, ty, tz):
@@ -561,6 +550,11 @@ def get_world_corners_test():
     p = m.get_corners_world_frame(0)
     print("Corners for AprilTag index 0 in world frame:")
     print(p)  # Print the corners in the world frame
+    
+    p = m.get_corners_world_frame(1)
+    print("Corners for AprilTag index 1 in world frame:")
+    print(p)  # Print the corners in the world frame
+    
     p = m.get_corners_world_frame(12)
     print("Corners for AprilTag index 12 in world frame:")
     print(p)  # Print the corners in the world frame
@@ -573,9 +567,26 @@ def get_world_corners_test():
     print("Corners for AprilTag index 36 in world frame:")
     print(p)  # Print the corners in the world frame
     
-    p = m.get_corners_world_frame(49)
-    print("Corners for AprilTag index 49 in world frame:")
+    p = m.get_corners_world_frame(48)
+    print("Corners for AprilTag index 48 in world frame:")
     print(p)  # Print the corners in the world frame
+    
+    p = m.get_corners_world_frame(60)
+    print("Corners for AprilTag index 60 in world frame:")
+    print(p)  # Print the corners in the world frame
+    
+    p = m.get_corners_world_frame(72)
+    print("Corners for AprilTag index 72 in world frame:")
+    print(p)  # Print the corners in the world frame
+    
+    p = m.get_corners_world_frame(84)
+    print("Corners for AprilTag index 84 in world frame:")
+    print(p)  # Print the corners in the world frame
+    
+    p = m.get_corners_world_frame(96)
+    print("Corners for AprilTag index 96 in world frame:")
+    print(p)  # Print the corners in the world frame
+    
     
     p = m.get_corners_world_frame(61)
     print("Corners for AprilTag index 61 in world frame:")
@@ -643,7 +654,8 @@ def process_measurement_data(file_name):
     
 
 if __name__ == "__main__":
-    
+    # get_world_corners_test()
+    # tests()
     # process_measurement_data('studentdata0.mat')
     process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata5.mat')
