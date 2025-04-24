@@ -12,10 +12,10 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python Debugger: Python File",
+            "name": "Python Debugger: Main File",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}"
+            "program": "src/main.py"
         }
     ]
 }

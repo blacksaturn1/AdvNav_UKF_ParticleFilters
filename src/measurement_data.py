@@ -132,7 +132,7 @@ class MeasurementData:
                 'objectPoints': objectPoints,
                 'rvec': rvec,  # Rotation vector
                 'tvec': tvec,   # Translation vector
-                'orientation': euler_angles,
+                'orientation': np.array([euler_angles]),
                 'cameraPosition': cameraPosition  # This is the position of the object in the world frame
             }         
 

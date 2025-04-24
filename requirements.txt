@@ -4,3 +4,4 @@ pandas==2.0.3
 matplotlib==3.7.1
 scikit-learn==1.2.2
 opencv-python==4.11.0.86
+filterpy==1.4.5

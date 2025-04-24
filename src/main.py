@@ -1,9 +1,5 @@
 from os.path import dirname, join as pjoin
-import scipy.io as sio
-import scipy.interpolate
-from scipy.interpolate import LinearNDInterpolator
 import os
-import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
@@ -154,6 +150,7 @@ if __name__ == "__main__":
     # get_world_corners_test()
     # tests()
     # process_measurement_data('studentdata0.mat')
+    # process('studentdata0.mat')
     process('studentdata5.mat')
     # process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata2.mat')
