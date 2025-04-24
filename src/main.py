@@ -126,7 +126,7 @@ def tests():
     plot_trajectory_test()
     get_world_corners_test()
     check_data()
-    tag_corners_world = generate_tag_corners()
+    # tag_corners_world = generate_tag_corners()
     # mat_contents['data'][6]['id']
 
 def process(file_name):
