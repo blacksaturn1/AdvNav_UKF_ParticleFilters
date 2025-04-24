@@ -26,6 +26,7 @@ class EkfFilter:
         
         # self.Q = Q_discrete_white_noise(dim=2, dt=1., var=2.35)
         self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        # self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         std_x, std_y = .3, .3
         # self.R = np.diag([std_x**2, std_y**2, std_y**2, std_y**2, std_y**2, std_y**2])
         self.R = self.P_Matrix()
