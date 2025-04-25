@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
 from ekf_filter import EkfFilter
 
-np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
+# np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir_script = os.path.dirname(script_dir)

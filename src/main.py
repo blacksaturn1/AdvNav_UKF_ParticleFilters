@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
 from localization import Localization
-np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
+# np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))

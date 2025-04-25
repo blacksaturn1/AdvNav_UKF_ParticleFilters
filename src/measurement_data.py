@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
-np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
+# np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
