@@ -26,36 +26,38 @@ class EkfFilter:
         sigmas = JulierSigmaPoints(n=15, kappa=0)
         
         # self.Q = Q_discrete_white_noise(dim=2, dt=1., var=2.35)
-        self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-        self.Q = np.diag([0]*15)
-        self.Q = np.zeros((15,15))
-        self.Q = np.diag([0]*15)
-        self.Q1 = Q_discrete_white_noise(dim=4, dt=1., var=2.35)
-        self.Q2 = Q_discrete_white_noise(dim=2, dt=1., var=2.35)
-        self.Q[0:4,0:4] = self.Q1
+        # self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        # self.Q = np.diag([0]*15)
+        # self.Q = np.zeros((15,15))
+        # self.Q = np.diag([0]*15)
+        # self.Q1 = Q_discrete_white_noise(dim=4, dt=1., var=2.35)
+        # self.Q2 = Q_discrete_white_noise(dim=2, dt=1., var=2.35)
+        # self.Q[0:4,0:4] = self.Q1
         
-        self.Q = np.diag([1]*15)
-        self.Q[0:4,0:4] = self.Q1
-        self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
-        self.Q = np.zeros((15,15))
-        self.Q[14,14] = 0.1
-        self.Q = np.zeros((15,15))
-        self.Q[0:2, 0:2] = Q_discrete_white_noise(2, dt=1, var=0.02)
-        self.Q[2:4, 2:4] = Q_discrete_white_noise(2, dt=1, var=0.02)
-        self.Q[4:6, 4:6] = Q_discrete_white_noise(2, dt=1, var=0.02)
-        self.Q[6:8, 6:8] = Q_discrete_white_noise(2, dt=1, var=0.02)
-        self.Q[8:10, 8:10] = Q_discrete_white_noise(2, dt=1, var=0.02)
-        self.Q[10:12, 10:12] = Q_discrete_white_noise(2, dt=1, var=0.02)
-        self.Q[12:14, 12:14] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q = np.diag([1]*15)
+        # self.Q[0:4,0:4] = self.Q1
+        # self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+        # self.Q = np.zeros((15,15))
+        # self.Q[14,14] = 0.1
+        # self.Q = np.zeros((15,15))
+        # self.Q[0:2, 0:2] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q[2:4, 2:4] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q[4:6, 4:6] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q[6:8, 6:8] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q[8:10, 8:10] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q[10:12, 10:12] = Q_discrete_white_noise(2, dt=1, var=0.02)
+        # self.Q[12:14, 12:14] = Q_discrete_white_noise(2, dt=1, var=0.02)
         
-        self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
-        self.Q = np.diag([2.]*9 + [1.1]*6)
-        self.Q = np.diag([.175]*15)
-        self.Q = np.eye(15)*10.0001
-        self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
-        self.Q = np.eye(15)*0.001
-        self.Q = np.eye(15)*0.2
-        self.Q[14,14] = 0.6
+        # self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+        # self.Q = np.diag([2.]*9 + [1.1]*6)
+        # self.Q = np.diag([.175]*15)
+        # self.Q = np.eye(15)*10.0001
+        
+        # self.Q = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+        # self.Q = np.eye(15)*0.001
+        self.Q = np.eye(15)*0.15
+        # self.Q[13,13] = 0.001
+        # self.Q[14,14] = 0.001
         self.check_covariance_matrix(self.Q)
         # self.Q[2:4,2:4] = self.Q2
         # Check if symmetric matrix
@@ -67,7 +69,7 @@ class EkfFilter:
         # self.R = np.diag([std_x**2, std_y**2, std_y**2, std_y**2, std_y**2, std_y**2])
         
         
-        self.H = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        self.H = np.array([[1, 0 , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

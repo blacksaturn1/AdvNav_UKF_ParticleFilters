@@ -151,7 +151,7 @@ if __name__ == "__main__":
     # tests()
     # process_measurement_data('studentdata0.mat')
     # process('studentdata0.mat')
-    process('studentdata5.mat')
+    process('studentdata3.mat')
     # process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata2.mat')
     # process_measurement_data('studentdata3.mat')
