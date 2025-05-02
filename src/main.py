@@ -10,7 +10,7 @@ from localization import Localization
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir_script = os.path.dirname(script_dir)
-print(f"Parent directory of the script: {parent_dir_script}")
+# print(f"Parent directory of the script: {parent_dir_script}")
 
 
 
@@ -138,10 +138,12 @@ def process(file_name):
     
     localization = Localization(file_name)
     localization.process_data()
-
-    localization.plot_trajectory()  # Plot the trajectory
-    localization.plot_orientation()  # Plot the roll trajectory
-    localization.calculate_covariance()
+    # localization.calculate_covariance()
+    localization.calculate_rmse()
+    # localization.plot_trajectory()  # Plot the trajectory
+    # localization.plot_orientation()  # Plot the roll trajectory
+    
+    
     
 
     
@@ -151,7 +153,7 @@ if __name__ == "__main__":
     # tests()
     # process_measurement_data('studentdata0.mat')
     # process('studentdata0.mat')
-    process('studentdata3.mat')
+    process('studentdata0.mat')
     # process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata2.mat')
     # process_measurement_data('studentdata3.mat')

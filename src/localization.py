@@ -12,7 +12,7 @@ from ekf_filter import EkfFilter
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir_script = os.path.dirname(script_dir)
-print(f"Parent directory of the script: {parent_dir_script}")
+# print(f"Parent directory of the script: {parent_dir_script}")
 
 class Localization:
     def __init__(self, file):
@@ -64,17 +64,12 @@ class Localization:
                     continue
             # Estimate the pose for each item in the data
             position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
-            if not is_initialized:
-                self.x[0:3] = position
-                self.x[3:6] = orientation.T
-                self.x[9:12] = np.array([[0.01,0.01,0.01]]).T
-                self.x[12:15] = np.array([[0.01,0.01,0.01]]).T
-                is_initialized = True
-            # Velocity
-            #self.x[6:9] = data['acc']
-            # R_matrix = ekfFilter.R_matrix(data)
-            # G_matrix = ekfFilter.G_Matrix(data)
-            #fx_matrix = ekfFilter.fx(self.x, data['t'],data)
+            # if not is_initialized:
+            #     self.x[0:3] = position
+            #     self.x[3:6] = orientation.T
+            #     self.x[9:12] = np.array([[0.01,0.01,0.01]]).T
+            #     self.x[12:15] = np.array([[0.01,0.01,0.01]]).T
+            #     is_initialized = True
             if position is None or orientation is None:
                 print("Warning: Pose estimation failed for the current data item. Skipping this item.")
                 continue  # Skip this item if pose estimation failed
@@ -179,7 +174,7 @@ class Localization:
         z = self.results_filtered_np.T.squeeze()[2,:]
         
         # Plot the trajectory
-        self.ax.plot(x, y, z, label='Fresults_filtered_npiltered Estimate', color='green', linewidth=1, linestyle='-' )  # Set color and linewidth for better visibility
+        self.ax.plot(x, y, z, label='Filtered Estimate', color='green', linewidth=1, linestyle='-' )  # Set color and linewidth for better visibility
 
         # Set labels and title
         self.ax.set_xlabel('X-axis')
@@ -211,7 +206,7 @@ class Localization:
         
         # Plot the trajectory
         fig, axs = plt.subplots(3, 1, figsize=(16, 16))
-        fig.suptitle('Roll / Pitch / Yresults_filtered_npaw Plot')
+        fig.suptitle('Roll / Pitch / Yaw Plot')
         # x = self.results_filtered_np.T.squeeze()[0,:]
         # y = self.results_filtered_np.T.squeeze()[1,:]
         # z = self.results_filtered_np.T.squeeze()[2,:]
@@ -275,6 +270,8 @@ class Localization:
             min_idx = np.argmin(self.actual_vicon_np[-1,:] < x)
             if min_idx == 0:
                 continue
+            if min_idx == self.actual_vicon_np[-1,:].shape[0]-1:
+                min_idx = min_idx-1
             x_interpolated = self.interpolate(x,
                     self.actual_vicon_np[-1,min_idx],
                     self.actual_vicon_np[-1,min_idx+1],
@@ -312,8 +309,8 @@ class Localization:
             
             self.actual_vicon_aligned_np = new_row if self.actual_vicon_aligned_np is None \
                 else np.vstack((self.actual_vicon_aligned_np,new_row))
-
-        self.diff_matrix = self.actual_vicon_aligned_np.T[0:6,:] - self.results_np.T.squeeze()[0:6,:] 
+        max_idx = min(self.actual_vicon_aligned_np.shape[0], self.results_np.shape[0])
+        self.diff_matrix = self.actual_vicon_aligned_np.T[0:6,:max_idx] - self.results_np.T.squeeze()[0:6,:max_idx] 
         temp_matrix = None
         for idx, row in enumerate(self.diff_matrix.T):
             v = np.matrix(row).T @ np.matrix(row)
@@ -339,5 +336,85 @@ class Localization:
             print("Covariance matrix is not positive definite.")
 
         return self.cov_matrix
+
+    def calculate_rmse(self):
+        """
+        Calculate the covariance of the estimated trajectory.
+        :return: Covariance matrix.
+        """
+        if self.results_filtered_np is None:
+            print("No results available to calculate RSME.")
+            return None
+        
+        self.actual_vicon_aligned_np = None
+        for idx,x_measurement_model in enumerate(self.results_filtered_np[:, -1]):
+            x = float(x_measurement_model)
+            min_idx = np.argmin(self.actual_vicon_np[-1,:] < x)
+            if min_idx == 0:
+                continue
+            if min_idx == self.actual_vicon_np[-1,:].shape[0]-1:
+                min_idx = min_idx-1
+            x_interpolated = self.interpolate(x,
+                    self.actual_vicon_np[-1,min_idx],
+                    self.actual_vicon_np[-1,min_idx+1],
+                    self.actual_vicon_np[0,min_idx],
+                    self.actual_vicon_np[0,min_idx+1])
+            y_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[1,min_idx],
+                self.actual_vicon_np[1,min_idx+1])
+            z_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[2,min_idx],
+                self.actual_vicon_np[2,min_idx+1])
+            roll_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[3,min_idx],
+                self.actual_vicon_np[3,min_idx+1])
+            pitch_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[4,min_idx],
+                self.actual_vicon_np[4,min_idx+1])
+            yaw_interpolated = self.interpolate(x,
+                self.actual_vicon_np[-1,min_idx],
+                self.actual_vicon_np[-1,min_idx+1],
+                self.actual_vicon_np[5,min_idx],
+                self.actual_vicon_np[5,min_idx+1])
+            new_row = [x_interpolated,y_interpolated,z_interpolated,
+                roll_interpolated,
+                pitch_interpolated,
+                yaw_interpolated,x]
+            
+            self.actual_vicon_aligned_np = new_row if self.actual_vicon_aligned_np is None \
+                else np.vstack((self.actual_vicon_aligned_np,new_row))
+        max_idx = min(self.actual_vicon_aligned_np.shape[0], self.results_np.shape[0])
+        
+        self.diff_matrix_estimated = self.actual_vicon_aligned_np.T[0:3,:max_idx] - self.results_np.T.squeeze()[0:3,:max_idx] 
+        distance_sum = 0
+        for x in range(self.diff_matrix_estimated.T.shape[0]):
+            distance_sum += (self.diff_matrix_estimated.T[x,0]**2 + 
+                             self.diff_matrix_estimated.T[x,1]**2 + 
+                             self.diff_matrix_estimated.T[x,2]**2)**0.5
+        
+        rmse = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
+        print("RMSE of measurement model: ", rmse)
+
+
+        self.diff_matrix_estimated = self.actual_vicon_aligned_np.T[0:3,:max_idx] - self.results_filtered_np.T.squeeze()[0:3,:max_idx] 
+        distance_sum = 0
+        for x in range(self.diff_matrix_estimated.T.shape[0]):
+            distance_sum += (self.diff_matrix_estimated.T[x,0]**2 + 
+                             self.diff_matrix_estimated.T[x,1]**2 + 
+                             self.diff_matrix_estimated.T[x,2]**2)**0.5
+        
+        rmse = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
+        print("RMSE of Filtered: ", rmse)
+
+        
+        
 
 

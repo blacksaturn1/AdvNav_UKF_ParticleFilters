@@ -12,7 +12,7 @@ from scipy.spatial.transform import Rotation as R
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir_script = os.path.dirname(script_dir)
-print(f"Parent directory of the script: {parent_dir_script}")
+# print(f"Parent directory of the script: {parent_dir_script}")
 
 class MeasurementData:
     def __init__(self,ax=None, fig=None):
