@@ -135,13 +135,15 @@ def process(file_name):
     :param file_name: Name of the MATLAB file to process.
     :return: Processed data.
     """
-    
+    rmse = .0    
     localization = Localization(file_name)
-    localization.process_data()
-    # localization.calculate_covariance()
-    rmse = localization.calculate_rmse()
+    localization.process_particle_filter()
+    # localization.process_data()
+    # # localization.calculate_covariance()
+    # rmse = localization.calculate_rmse()
     # localization.plot_trajectory()  # Plot the trajectory
     # localization.plot_orientation()  # Plot the roll trajectory
+
     return rmse
     
     

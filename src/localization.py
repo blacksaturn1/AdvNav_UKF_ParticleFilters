@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
 from ukf_filter import UkfFilter
-
+from particle_filter import ParticleFilter
 # np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +29,34 @@ class Localization:
         self.diff_matrix = None
         self.cov_matrix = None
         self.loadMatlabData(file)
+        self.pf = ParticleFilter(
+            num_particles=1000,
+            state_dim=1,
+            process_model=self.process_model,
+            measurement_model=self.measurement_model,
+            init_state_sampler=self.init_sampler
+        )
+    
+    def process_model(self,x, u):
+        # simple linear motion with noise
+        return x + 1.0 + np.random.normal(0, 1)
+
+    def measurement_model(self,x, z):
+        # Gaussian likelihood
+        return np.exp(-0.5 * ((z - x) ** 2) / 2.0)
+
+    def init_sampler(self,N, dim):
+        return np.random.uniform(-10, 10, size=(N, dim))
+
+    def process_particle_filter(self):
+
+        for t in range(50):
+            self.pf.predict()
+            z = 5.0 + np.random.normal(0, 1)  # fake measurement
+            self.pf.update(z)
+            self.pf.resample()
+            est = self.pf.estimate()
+            print(f"Time {t}: Estimate = {est}")
 
 
     def loadMatlabData(self,file_name):
