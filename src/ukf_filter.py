@@ -19,7 +19,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir_script = os.path.dirname(script_dir)
 # print(f"Parent directory of the script: {parent_dir_script}")
 
-class EkfFilter:
+class UkfFilter:
     def __init__(self, measurement_data):
         self.debug = False
         self.measurement_data = measurement_data

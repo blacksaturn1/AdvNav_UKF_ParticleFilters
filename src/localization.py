@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
-from ekf_filter import EkfFilter
+from ukf_filter import UkfFilter
 
 # np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 # Get parent directory of the current script file
@@ -49,7 +49,7 @@ class Localization:
         """
         measurement_data = MeasurementData()
         position = None
-        ekfFilter = EkfFilter(self.mat_contents)
+        ekfFilter = UkfFilter(self.mat_contents)
         self.time = []
         self.results_np = None
         self.results_filtered_np = None
