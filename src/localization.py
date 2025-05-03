@@ -400,8 +400,8 @@ class Localization:
                              self.diff_matrix_estimated.T[x,1]**2 + 
                              self.diff_matrix_estimated.T[x,2]**2)**0.5
         
-        rmse = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
-        print("RMSE of measurement model: ", rmse)
+        rmse_measurement_model = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
+        # print("RMSE of measurement model: ", rmse_measurement_model)
 
 
         self.diff_matrix_estimated = self.actual_vicon_aligned_np.T[0:3,:max_idx] - self.results_filtered_np.T.squeeze()[0:3,:max_idx] 
@@ -411,8 +411,12 @@ class Localization:
                              self.diff_matrix_estimated.T[x,1]**2 + 
                              self.diff_matrix_estimated.T[x,2]**2)**0.5
         
-        rmse = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
-        print("RMSE of Filtered: ", rmse)
+        rmse_filtered = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
+        # print("RMSE of Filtered: ", rmse_filtered)
+        rmse_difference = rmse_measurement_model - rmse_filtered
+        print("RMSE difference: ", rmse_difference)
+        return rmse_difference
+    
 
         
         

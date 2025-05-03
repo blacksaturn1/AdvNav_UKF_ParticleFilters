@@ -25,8 +25,8 @@ class EkfFilter:
         self.measurement_data = measurement_data
         self.R = None
 
-        # sigmas = JulierSigmaPoints(n=15, kappa=0)
-        points = MerweScaledSigmaPoints(n=15, alpha=.1, beta=2., kappa=0)
+        points = JulierSigmaPoints(n=15, kappa=0.1)
+        # points = MerweScaledSigmaPoints(n=15, alpha=.1, beta=2., kappa=0)
         
         self.Q = np.eye(15)*0.0015
         self.Q[0,0]=0.015
@@ -45,7 +45,7 @@ class EkfFilter:
                            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            ])
         
-        self.ukf = UnscentedKalmanFilter(dim_x=15, dim_z=6, dt=0.1, hx=self.hx, fx=self.fx, points=points)
+        self.ukf = UnscentedKalmanFilter(dim_x=15, dim_z=6, dt=0.001, hx=self.hx, fx=self.fx, points=points)
         #  the measurement mean and noise covariance
         self.R = self.P_Matrix()
         self.ukf.R = self.R
@@ -53,21 +53,21 @@ class EkfFilter:
         
         self.ukf.Q = self.Q
 
-        # Define the covariance matrices for gyroscope and accelerometer bias noise
-        sigma_bg_x = 0.025
-        sigma_bg_y = 0.005
-        sigma_bg_z = 0.015
-        sigma_bg_z = 0.005
+        # # Define the covariance matrices for gyroscope and accelerometer bias noise
+        # sigma_bg_x = 0.025
+        # sigma_bg_y = 0.005
+        # sigma_bg_z = 0.015
+        # sigma_bg_z = 0.005
         
-        sigma_ba_x = 0.015
-        sigma_ba_y = 0.015
-        sigma_ba_z = 0.015
-        Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
-        Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
-        # Generate random noise for biases (Nbg and Nba)
+        # sigma_ba_x = 0.015
+        # sigma_ba_y = 0.015
+        # sigma_ba_z = 0.015
+        # Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
+        # Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
+        # # Generate random noise for biases (Nbg and Nba)
 
-        self.Nbg = np.random.multivariate_normal(mean=np.zeros(3), cov=Qg)
-        self.Nba = np.random.multivariate_normal(mean=np.zeros(3), cov=Qa)
+        # self.Nbg = np.random.multivariate_normal(mean=np.zeros(3), cov=Qg)
+        # self.Nba = np.random.multivariate_normal(mean=np.zeros(3), cov=Qa)
 
     def check_covariance_matrix(self, matrix):
         if np.allclose(matrix, matrix.T):
@@ -136,17 +136,22 @@ class EkfFilter:
         xout[2] = x[8] * dt + x[2]
         # q vector
         G_matrix = self.G_Matrix(x[3:6])
-        U_w = (np.array([data['omg']]) - x[9:12]).T
+        # U_w = (np.array([data['omg']]) - x[9:12]).T
+        U_w = (np.array([data['omg']])).T
         q_dot = np.linalg.inv(G_matrix) @ U_w
         xout[3:6] = q_dot.squeeze()
-        U_a = (np.array([data['acc']]) - x[12:15]).T
+        # U_a = (np.array([data['acc']]) - x[12:15]).T
+        U_a = (np.array([data['acc']])).T
 
-        Rq_matrix = self.Rq_matrix(x[3:6])
+        # I think this is the correct way to calculate the rotation matrix
+        # Rq_matrix = self.Rq_matrix(x[3:6])
+        Rq_matrix = self.Rq_matrix(data['rpy'])
         g = np.array([[0, 0, 9.81]]).T
         xout[6:9] = (Rq_matrix @ U_a + g).squeeze()
         
-        xout[9:12] = x[9:12] + self.Nbg
-        xout[12:15] = x[12:15] + self.Nba
+        # I think the bias is not added to the state vector
+        # xout[9:12] = x[9:12] + self.Nbg
+        # xout[12:15] = x[12:15] + self.Nba
         # xout[9:12] = self.Nbg
         # xout[12:15] = self.Nba
         return xout
@@ -171,8 +176,10 @@ class EkfFilter:
  [ 0.00853663 ,-0.00188542 , 0.00840728 , 0.00250991,  0.00830289, -0.00050637],
  [-0.00074059 ,-0.00014287 ,-0.00132054, -0.00037419, -0.00050637,  0.00012994]]
         )
-        return P
-        return np.diag([.2]*6)
+        P2 = np.diag([.008]*6)
+        return P2
+        # return P
+        
         
         
     
@@ -190,7 +197,8 @@ class EkfFilter:
         rotation_y = R.from_euler('y', rpy[1], degrees=False).as_matrix()
         rotation_z = R.from_euler('z', rpy[2], degrees=False).as_matrix()
         # self.R = rotation_z @ rotation_x @ rotation_y
-        self.R = rotation_y @ rotation_x @ rotation_z
+        # self.R = rotation_y @ rotation_x @ rotation_z
+        self.R = rotation_z @ rotation_y @ rotation_x
         check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
         
         return self.R

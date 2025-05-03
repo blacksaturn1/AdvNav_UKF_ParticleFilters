@@ -139,10 +139,10 @@ def process(file_name):
     localization = Localization(file_name)
     localization.process_data()
     # localization.calculate_covariance()
-    localization.calculate_rmse()
+    rmse = localization.calculate_rmse()
     # localization.plot_trajectory()  # Plot the trajectory
     # localization.plot_orientation()  # Plot the roll trajectory
-    
+    return rmse
     
     
 
@@ -153,7 +153,17 @@ if __name__ == "__main__":
     # tests()
     # process_measurement_data('studentdata0.mat')
     # process('studentdata0.mat')
-    process('studentdata0.mat')
+    results = []
+    results.append(process('studentdata0.mat'))
+    results.append(process('studentdata1.mat'))
+    results.append(process('studentdata2.mat'))
+    results.append(process('studentdata3.mat'))
+    results.append(process('studentdata4.mat'))
+    results.append(process('studentdata5.mat'))
+    results.append(process('studentdata6.mat'))
+    results.append(process('studentdata7.mat'))
+    print("RMSE results for all datasets:", sum(results)/len(results))
+    
     # process_measurement_data('studentdata5.mat')
     # process_measurement_data('studentdata2.mat')
     # process_measurement_data('studentdata3.mat')
