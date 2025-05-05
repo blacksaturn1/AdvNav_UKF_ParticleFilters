@@ -31,34 +31,62 @@ class Localization:
         self.loadMatlabData(file)
         self.pf = ParticleFilter(
             num_particles=1000,
-            state_dim=1,
-            process_model=self.process_model,
-            measurement_model=self.measurement_model,
-            init_state_sampler=self.init_sampler
+            state_dim=15
         )
     
-    def process_model(self,x, u):
-        # simple linear motion with noise
-        return x + 1.0 + np.random.normal(0, 1)
+    # def process_model(self,x, u):
+    #     # simple linear motion with noise
+    #     return x + 1.0 + np.random.normal(0, 1)
 
-    def measurement_model(self,x, z):
-        # Gaussian likelihood
-        return np.exp(-0.5 * ((z - x) ** 2) / 2.0)
+    # def measurement_model(self,x, z):
+    #     # Gaussian likelihood
+    #     return np.exp(-0.5 * ((z - x) ** 2) / 2.0)
 
     def init_sampler(self,N, dim):
         return np.random.uniform(-10, 10, size=(N, dim))
 
     def process_particle_filter(self):
+        
+        measurement_data = MeasurementData()
+        position = None
+        self.time = []
+        self.results_np = None
+        self.results_filtered_np = None
+        self.x = np.zeros((15,1))
+        
+        dt = 0.
+        time_last = 0.
+        for data in self.mat_contents['data']:
+            if isinstance(data['id'],np.ndarray):
+                # This has no April tags found in the image
+                if len(data['id']) == 0:
+                    continue
+            # Estimate the pose for each item in the data
+            position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
+            # if not is_initialized:
+            #     self.x[0:3] = position
+            #     self.x[3:6] = orientation.T
+            #     self.x[9:12] = np.array([[0.01,0.01,0.01]]).T
+            #     self.x[12:15] = np.array([[0.01,0.01,0.01]]).T
+            #     is_initialized = True
+            if position is None or orientation is None:
+                print("Warning: Pose estimation failed for the current data item. Skipping this item.")
+                continue  # Skip this item if pose estimation failed
+            dt = data['t'] - time_last
+            time_last = data['t']
 
-        for t in range(50):
-            self.pf.predict()
-            z = 5.0 + np.random.normal(0, 1)  # fake measurement
-            self.pf.update(z)
+            self.pf.predict(dt,data)
+            z = np.hstack((np.array(position).T,orientation))
+            self.pf.update(z.T)
             self.pf.resample()
-            est = self.pf.estimate()
-            print(f"Time {t}: Estimate = {est}")
-
-
+            filtered_state_x = self.pf.estimate()
+            result = np.hstack((np.array(position).T,orientation))
+            result = np.hstack((result, np.array([[data['t']]])))
+            filtered_state_x = np.hstack((filtered_state_x, np.array([data['t']])))
+            # result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
+            self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
+            self.results_filtered_np= filtered_state_x if self.results_filtered_np is None else np.vstack((self.results_filtered_np, filtered_state_x))
+        
     def loadMatlabData(self,file_name):
         """
         Load MATLAB data file.
