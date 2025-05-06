@@ -8,6 +8,10 @@ from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
 from ukf_filter import UkfFilter
 from particle_filter import ParticleFilter
+
+# import matplotlib.pyplot as plt
+# import matplotlib.animation as animation
+
 # np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 # Get parent directory of the current script file
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,27 +37,15 @@ class Localization:
             num_particles=1000,
             state_dim=15
         )
-    
-    # def process_model(self,x, u):
-    #     # simple linear motion with noise
-    #     return x + 1.0 + np.random.normal(0, 1)
-
-    # def measurement_model(self,x, z):
-    #     # Gaussian likelihood
-    #     return np.exp(-0.5 * ((z - x) ** 2) / 2.0)
-
-    def init_sampler(self,N, dim):
-        return np.random.uniform(-10, 10, size=(N, dim))
-
-    def process_particle_filter(self):
         
+    def process_particle_filter(self):
         measurement_data = MeasurementData()
         position = None
         self.time = []
         self.results_np = None
         self.results_filtered_np = None
         self.x = np.zeros((15,1))
-        
+        is_initialized = False
         dt = 0.
         time_last = 0.
         for data in self.mat_contents['data']:
@@ -63,16 +55,18 @@ class Localization:
                     continue
             # Estimate the pose for each item in the data
             position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
-            # if not is_initialized:
-            #     self.x[0:3] = position
-            #     self.x[3:6] = orientation.T
-            #     self.x[9:12] = np.array([[0.01,0.01,0.01]]).T
-            #     self.x[12:15] = np.array([[0.01,0.01,0.01]]).T
-            #     is_initialized = True
+           
             if position is None or orientation is None:
                 print("Warning: Pose estimation failed for the current data item. Skipping this item.")
                 continue  # Skip this item if pose estimation failed
             dt = data['t'] - time_last
+            if time_last == 0. and not is_initialized:
+                dt = 0.001
+                self.pf.particles[:,0:3] = np.tile(position, self.pf.num_particles).T
+                self.pf.particles[:,3:6] = np.tile(orientation.T, self.pf.num_particles).T
+                is_initialized = True
+                # self.pf.particles[:,9:12] = np.array([[0.0001,0.0001,0.0001]]).T
+                # self.pf.particles[:,12:15] = np.array([[0.0001,0.0001,0.0001]]).T    
             time_last = data['t']
 
             self.pf.predict(dt,data)

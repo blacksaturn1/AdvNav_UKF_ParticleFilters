@@ -12,7 +12,9 @@ class ParticleFilter:
         self.particles = self.init_state_sampler(num_particles, state_dim)
         self.weights = np.ones(num_particles) / num_particles
         self.process_model = self.fx
-        self.measurement_model = self.measurement_model
+        
+        # self.measurement_model = self.measurement_model
+
         # # Define the covariance matrices for gyroscope and accelerometer bias noise
         sigma_bg_x = 0.1
         sigma_bg_y = 0.1
@@ -40,35 +42,38 @@ class ParticleFilter:
             self.particles[i] = self.process_model(self.particles[i], dt, control_input)
 
     def update(self, measurement):
-        # for i in range(self.num_particles):
-        #     self.weights[i] = self.measurement_model(self.particles[i], measurement)
-        # self.weights += 1.e-300  # avoid division by zero
-        # self.weights /= np.sum(self.weights)
+        
         # Compute error between particle state and measurement
         meas_pos = measurement[0:3].T      # shape (3,)
         meas_orient = measurement[3:6].T
-        N = self.particles.shape[0]
         pos_diff = self.particles[:, 0:3] - meas_pos  # position error for each particle
         orient_diff = self.particles[:, 3:6] - meas_orient  # orientation error for each particle
         # orient_diff = normalize_angle(orient_diff)     # account for angle wrapping
         
         # Measurement noise standard deviations
-        pos_std = np.array([0.01, 0.01, 0.01])
-        orient_std = np.array([0.01, 0.01, 0.01])
+        pos_std = np.array([0.001, 0.001, 0.001])
+        orient_std = np.array([0.001, 0.001, 0.001])
+        
         # Compute normalized squared errors
         pos_norm_err = (pos_diff / pos_std) ** 2       # element-wise squared error / variance
         orient_norm_err = (orient_diff / orient_std) ** 2
+        
         # Sum of squared errors across all dimensions (position + orientation)
         total_error = np.sum(pos_norm_err, axis=1) + np.sum(orient_norm_err, axis=1)
+        
         # Compute likelihood for each particle: exp(-0.5 * total_error)
         likelihood = np.exp(-0.5 * total_error)
+        
         # Multiply by prior weight (Bayesian update)
         new_weights = likelihood * self.weights
+        
         # Avoid all weights becoming zero (in case of extreme outlier measurement)
         if np.all(new_weights == 0):
             new_weights = np.ones_like(new_weights) * 1e-12
+        
         # Normalize weights to sum to 1
         new_weights = new_weights / np.sum(new_weights)
+        
         self.weights = new_weights
 
     def resample(self):
@@ -79,10 +84,8 @@ class ParticleFilter:
         self.weights = np.ones(self.num_particles) / self.num_particles
 
     def estimate(self):
-        
-        # w = sum(self.weights)
-        # avg_pos = np.average(self.particles[:, 0:3], weights=self.weights, axis=0)
         all = np.average(self.particles, weights=self.weights, axis=0)
+        
         # Orientation: average on a circle by using sin/cos
         sin_roll  = np.average(np.sin(self.particles[:, 3]), weights=self.weights)
         cos_roll  = np.average(np.cos(self.particles[:, 3]), weights=self.weights)
@@ -99,33 +102,10 @@ class ParticleFilter:
     
     # self.measurement_model = lambda x, measurement: np.exp(-np.linalg.norm(x - measurement) ** 2 / (2 * 0.1 ** 2))
     
-    def measurement_model(self, x, measurement):
-        # Implement the measurement model here
-        # For example, you can use a Gaussian likelihood function
-        # return np.exp(-np.linalg.norm(x - measurement) ** 2 / (2 * 0.1 ** 2))
-        mm = self.H @ x
-        # mm = x[0:6]
-        # prob = norm.pdf(mm, measurement.T, 0.01)
-        # prob = norm(mm, 0.01).pdf(measurement.T)
-        # prob = np.sum(norm(mm, 0.01).pdf(measurement.T)) / measurement.shape[0]
-        likelihood = multivariate_normal.pdf(measurement.T, mean=mm.T, cov=self.measurement_cov)
-        # likelihood = multivariate_normal.pdf(gps_measurement, mean=predicted_position, cov=gps_noise_cov)
-
-        # return 0
-        # Compute error between particle state and measurement
-        # pos_diff = x[:, 0:3] - meas_pos  # position error for each particle
-        # orient_diff = x[:, 6:9] - meas_orient  # orientation error for each particle
-        # orient_diff = normalize_angle(orient_diff)     # account for angle wrapping
-
-
-
-        return likelihood
-        # return np.exp(-np.linalg.norm(mm - measurement) ** 2 / (2 * 0.01 ** 2))
-    
     def init_state_sampler(self, num_particles, state_dim):
         # Implement the initialization of particles here
         # For example, you can sample from a uniform distribution
-        return np.random.uniform(-10, 10, (num_particles, state_dim))
+        return np.random.uniform(-2, 2, (num_particles, state_dim))
         # particles = np.random.multivariate_normal(self.mean_init, self.cov_init, size=num_particles)
         return particles
     
@@ -194,35 +174,33 @@ class ParticleFilter:
         if data.get('omg') is None or data.get('acc') is None:
             return xout
          # P vector
+
+        gyro_bias_prev = x[9:12]
+        accel_bias_prev = x[12:15]
+
+        gyro_bias_next = gyro_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
+        accel_bias_next = accel_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
         
+        xout[9:12] = gyro_bias_next
+        xout[12:15] = accel_bias_next
+
+
         G = self.G_Matrix(x[3:6])
-        U_w = (np.array([data['omg']])).T
+        U_w = (np.array([data['omg']]) + gyro_bias_next).T
         q_dot = np.linalg.inv(G) @ U_w
         xout[3:6] = q_dot.squeeze()
-        U_a = (np.array([data['acc']])).T
+        U_a = (np.array([data['acc']]) + accel_bias_next ).T
 
-        Rq_matrix = self.Rq_matrix(data['rpy'])
-        # Rq_matrix = self.Rq_matrix(x[3:6])
+        # Rq_matrix = self.Rq_matrix(data['rpy'])
+        Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
-        xout[6:9] = (Rq_matrix @ U_a + g).squeeze()
+        # xout[6:9] = (Rq_matrix.T @ (U_a - g)).squeeze()
+        xout[6:9] = (Rq_matrix.T @ (U_a - g)).squeeze()
         
         xout[0] = xout[6] * dt + x[0]
         xout[1] = xout[7] * dt + x[1]
         xout[2] = xout[8] * dt + x[2]
-        # xout[0] = x[6] * dt + x[0]
-        # xout[1] = x[7] * dt + x[1]
-        # xout[2] = x[8] * dt + x[2]
-
-        # xout[9:12] = x[9:12] + self.Nbg
-        # xout[12:15] = x[12:15] + self.Nba
-        gyro_bias_prev = x[9:12]
-        accel_bias_prev = x[12:15]
-
-        gyro_bias_next = gyro_bias_prev + self.Nbg*dt
-        accel_bias_next = accel_bias_prev + self.Nba*dt
-        
-        xout[9:12] = gyro_bias_next
-        xout[12:15] = accel_bias_next
+       
         return xout
 
     def Rq_matrix(self, rpy):
