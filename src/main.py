@@ -126,10 +126,15 @@ def tests():
     plot_trajectory_test()
     get_world_corners_test()
     check_data()
+    get_world_corners_test()
+    
+    # process_measurement_data('studentdata0.mat')
+    # process('studentdata0.mat')
+    
     # tag_corners_world = generate_tag_corners()
     # mat_contents['data'][6]['id']
 
-def process(file_name):
+def process_particle_filter(file_name, particle_count=250):
     """
     Process the measurement data from the specified MATLAB file.
     :param file_name: Name of the MATLAB file to process.
@@ -137,12 +142,28 @@ def process(file_name):
     """
     rmse = .0    
     localization = Localization(file_name)
-    localization.process_particle_filter()
+    localization.process_particle_filter(particle_count=particle_count)
     # localization.process_data()
     # # localization.calculate_covariance()
     rmse = localization.calculate_rmse()
     localization.plot_trajectory()  # Plot the trajectory
-    # localization.plot_orientation()  # Plot the roll trajectory
+    localization.plot_orientation()  # Plot the roll trajectory
+
+    return rmse
+    
+def process_ukf_filter(file_name):
+    """
+    Process the measurement data from the specified MATLAB file.
+    :param file_name: Name of the MATLAB file to process.
+    :return: Processed data.
+    """
+    rmse = .0    
+    localization = Localization(file_name)
+    localization.process_ukf_filter()
+    localization.calculate_covariance()
+    rmse = localization.calculate_rmse()
+    localization.plot_trajectory()  # Plot the trajectory
+    localization.plot_orientation()  # Plot the roll trajectory
 
     return rmse
     
@@ -150,29 +171,40 @@ def process(file_name):
 
     
 
-if __name__ == "__main__":
-    # get_world_corners_test()
-    # tests()
-    # process_measurement_data('studentdata0.mat')
-    # process('studentdata0.mat')
+def run_particle_filter_experiment(particle_count):
     results = []
-    results.append(process('studentdata5.mat'))
-    # results.append(process('studentdata1.mat'))
-    # results.append(process('studentdata2.mat'))
-    # results.append(process('studentdata3.mat'))
-    # results.append(process('studentdata4.mat'))
-    # results.append(process('studentdata5.mat'))
-    # results.append(process('studentdata6.mat'))
-    # results.append(process('studentdata7.mat'))
-    print("RMSE results for all datasets:", sum(results)/len(results))
-    
-    # process_measurement_data('studentdata5.mat')
-    # process_measurement_data('studentdata2.mat')
-    # process_measurement_data('studentdata3.mat')
-    # process_measurement_data('studentdata4.mat')
-    # process_measurement_data('studentdata5.mat')
-    # process_measurement_data('studentdata6.mat')
-    # process_measurement_data('studentdata7.mat')
+    results.append(process_particle_filter('studentdata0.mat', particle_count))
+    results.append(process_particle_filter('studentdata1.mat', particle_count))
+    results.append(process_particle_filter('studentdata2.mat', particle_count))
+    results.append(process_particle_filter('studentdata3.mat', particle_count))
+    results.append(process_particle_filter('studentdata4.mat', particle_count))
+    results.append(process_particle_filter('studentdata5.mat', particle_count))
+    results.append(process_particle_filter('studentdata6.mat', particle_count))
+    results.append(process_particle_filter('studentdata7.mat', particle_count))
+    print("RMSE results for all datasets with Particle Filter:", sum(results)/len(results))
 
-    #main()
-    #tests()  # Run all tests
+def run_ukf_filter_experiment():
+    results = []
+    results.append(process_ukf_filter('studentdata0.mat'))
+    results.append(process_ukf_filter('studentdata1.mat'))
+    results.append(process_ukf_filter('studentdata2.mat'))
+    results.append(process_ukf_filter('studentdata3.mat'))
+    results.append(process_ukf_filter('studentdata4.mat'))
+    results.append(process_ukf_filter('studentdata5.mat'))
+    results.append(process_ukf_filter('studentdata6.mat'))
+    results.append(process_ukf_filter('studentdata7.mat'))
+    print("RMSE results for all datasets with UKF Filter:", sum(results)/len(results))
+
+if __name__ == "__main__":
+    
+    # Ukf Filter
+    run_ukf_filter_experiment()
+    # Particle Filter
+    run_particle_filter_experiment(250)
+    run_particle_filter_experiment(500)
+    run_particle_filter_experiment(750)
+    run_particle_filter_experiment(1000)
+    run_particle_filter_experiment(2000)
+    run_particle_filter_experiment(3000)
+    run_particle_filter_experiment(4000)
+    run_particle_filter_experiment(5000)

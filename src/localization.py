@@ -33,12 +33,25 @@ class Localization:
         self.diff_matrix = None
         self.cov_matrix = None
         self.loadMatlabData(file)
+        self.file = file
+        self.ukf_or_particle_filter = "UKF"
+        self.particle_count = 0
+        self.pf = None
+        self.results_filtered_np = None
+        self.x = None
+        self.time = None
+        self.ax = None
+        self.fig = None
+        self.axs = None
+        
+        
+    def process_particle_filter(self,particle_count=0):
+        self.ukf_or_particle_filter = "ParticleFilter"
+        self.particle_count = particle_count
         self.pf = ParticleFilter(
-            num_particles=1000,
+            num_particles = particle_count,
             state_dim=15
         )
-        
-    def process_particle_filter(self):
         measurement_data = MeasurementData()
         position = None
         self.time = []
@@ -92,7 +105,7 @@ class Localization:
         self.actual_vicon_np = np.vstack((self.mat_contents['vicon'], np.array([self.mat_contents['time']])))
         return self.mat_contents
     
-    def process_data(self):
+    def process_ukf_filter(self):
         """
         Process the measurement data to extract relevant information.
         :return: Processed data.
@@ -236,7 +249,16 @@ class Localization:
         self.ax.legend()
 
         # Show the plot
-        plt.show()
+        if not os.path.exists("./plots"):
+            os.makedirs("./plots")
+        if self.ukf_or_particle_filter is not "UKF":
+            self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.particle_count}_{self.file}_trajectory_plot.png", dpi=300, bbox_inches='tight')    
+        else:
+            self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.file}_trajectory_plot.png", dpi=300, bbox_inches='tight')
+        # plt.close(self.fig)
+        # Show the plot
+        # plt.show()
+
 
 
     
@@ -255,43 +277,47 @@ class Localization:
         
         
         # Plot the trajectory
-        fig, axs = plt.subplots(3, 1, figsize=(16, 16))
-        fig.suptitle('Roll / Pitch / Yaw Plot')
+        self.fig, self.axs = plt.subplots(3, 1, figsize=(16, 16))
+        self.fig.suptitle('Roll / Pitch / Yaw Plot')
         # x = self.results_filtered_np.T.squeeze()[0,:]
         # y = self.results_filtered_np.T.squeeze()[1,:]
         # z = self.results_filtered_np.T.squeeze()[2,:]
         
         # Plot the trajectory
-        axs[0].plot(x, roll, label='Actual', color='b', linewidth=1)  # Set color and linewidth for better visibility
-        axs[0].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[3,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
-        axs[0].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[3,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[0].plot(x, roll, label='Actual', color='b', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[0].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[3,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[0].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[3,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
 
-        axs[1].plot(x, pitch, label='Actual', color='b', linewidth=1)  # Set color and linewidth for better visibility
-        axs[1].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[4,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
-        axs[1].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[4,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[1].plot(x, pitch, label='Actual', color='b', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[1].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[4,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[1].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[4,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
 
-        axs[2].plot(x, yaw, label='Actresults_filtered_npual', color='b', linewidth=1)  # Set color and linewidth for better visibility
-        axs[2].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[5,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
-        axs[2].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[5,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[2].plot(x, yaw, label='Actresults_filtered_npual', color='b', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[2].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[5,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[2].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[5,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
         
         # Set labels and title
-        axs[0].set_xlabel('Time')
-        axs[0].set_ylabel('Roll (rad)')
-        axs[0].set_title('Roll Plot')
-        axs[0].legend()
-        axs[1].set_xlabel('Time')
-        axs[1].set_ylabel('Pitch (rad)')
-        axs[1].set_title('Pitch Plot')
-        axs[1].legend()
-        axs[2].set_xlabel('Time')
-        axs[2].set_ylabel('Yaw (rad)')
-        axs[2].set_title('Yaw Plot')    
-        axs[2].legend()
+        self.axs[0].set_xlabel('Time')
+        self.axs[0].set_ylabel('Roll (rad)')
+        self.axs[0].set_title('Roll Plot')
+        self.axs[0].legend()
+        self.axs[1].set_xlabel('Time')
+        self.axs[1].set_ylabel('Pitch (rad)')
+        self.axs[1].set_title('Pitch Plot')
+        self.axs[1].legend()
+        self.axs[2].set_xlabel('Time')
+        self.axs[2].set_ylabel('Yaw (rad)')
+        self.axs[2].set_title('Yaw Plot')    
+        self.axs[2].legend()
         plt.subplots_adjust(wspace=0.4, hspace=0.6) # Adjust values as needed
         
         # Show the plot
-        plt.show()
-        return fig,axs
+        if self.ukf_or_particle_filter is not "UKF":
+            self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.particle_count}_{self.file}_orientation_plot.png", dpi=300, bbox_inches='tight')    
+        else:
+            self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.file}_orientation_plot.png", dpi=300, bbox_inches='tight')
+        plt.close(self.fig)
+        
     
     def interpolate(self,time_target,t1, t2,y1, y2):
         """
