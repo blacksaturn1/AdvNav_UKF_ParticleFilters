@@ -251,7 +251,7 @@ class Localization:
         # Show the plot
         if not os.path.exists("./plots"):
             os.makedirs("./plots")
-        if self.ukf_or_particle_filter is not "UKF":
+        if self.ukf_or_particle_filter != "UKF":
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.particle_count}_{self.file}_trajectory_plot.png", dpi=300, bbox_inches='tight')    
         else:
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.file}_trajectory_plot.png", dpi=300, bbox_inches='tight')
@@ -312,7 +312,7 @@ class Localization:
         plt.subplots_adjust(wspace=0.4, hspace=0.6) # Adjust values as needed
         
         # Show the plot
-        if self.ukf_or_particle_filter is not "UKF":
+        if self.ukf_or_particle_filter != "UKF":
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.particle_count}_{self.file}_orientation_plot.png", dpi=300, bbox_inches='tight')    
         else:
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.file}_orientation_plot.png", dpi=300, bbox_inches='tight')
