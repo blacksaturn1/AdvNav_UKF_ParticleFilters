@@ -181,7 +181,7 @@ def run_particle_filter_experiment(particle_count):
     results.append(process_particle_filter('studentdata5.mat', particle_count))
     results.append(process_particle_filter('studentdata6.mat', particle_count))
     results.append(process_particle_filter('studentdata7.mat', particle_count))
-    print("RMSE results for all datasets with Particle Filter:", sum(results)/len(results))
+    print(f"RMSE results for all datasets with Particle Filter-{particle_count}:", sum(results)/len(results))
 
 def run_ukf_filter_experiment():
     results = []
