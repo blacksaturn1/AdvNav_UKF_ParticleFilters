@@ -130,10 +130,7 @@ class UkfFilter:
         xout = x.copy()
         if data.get('omg') is None or data.get('acc') is None:
             return xout
-        # P vector
-        xout[0] = x[6] * dt + x[0]
-        xout[1] = x[7] * dt + x[1]
-        xout[2] = x[8] * dt + x[2]
+       
         # q vector
         G_matrix = self.G_Matrix(x[3:6])
         # U_w = (np.array([data['omg']]) - x[9:12]).T
@@ -144,11 +141,16 @@ class UkfFilter:
         U_a = (np.array([data['acc']])).T
 
         # I think this is the correct way to calculate the rotation matrix
-        # Rq_matrix = self.Rq_matrix(x[3:6])
-        Rq_matrix = self.Rq_matrix(data['rpy'])
+        Rq_matrix = self.Rq_matrix(x[3:6])
+        # Rq_matrix = self.Rq_matrix(data['rpy'])
         g = np.array([[0, 0, 9.81]]).T
-        xout[6:9] = (Rq_matrix @ U_a + g).squeeze()
+        xout[6:9] = ((Rq_matrix @ U_a) + g).squeeze()
         
+         # P vector
+        xout[0] = xout[6] * dt + x[0]
+        xout[1] = xout[7] * dt + x[1]
+        xout[2] = xout[8] * dt + x[2]
+
         # I think the bias is not added to the state vector
         # xout[9:12] = x[9:12] + self.Nbg
         # xout[12:15] = x[12:15] + self.Nba
