@@ -2,6 +2,7 @@ from os.path import dirname, join as pjoin
 import scipy.io as sio
 from scipy.interpolate import LinearNDInterpolator
 import os
+# import cupy as np
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
@@ -73,7 +74,7 @@ class Localization:
                 print("Warning: Pose estimation failed for the current data item. Skipping this item.")
                 continue  # Skip this item if pose estimation failed
             dt = data['t'] - time_last
-            if time_last == 0. and not is_initialized:
+            if not is_initialized:
                 dt = 0.001
                 self.pf.particles[:,0:3] = np.tile(position, self.pf.num_particles).T
                 self.pf.particles[:,3:6] = np.tile(orientation.T, self.pf.num_particles).T

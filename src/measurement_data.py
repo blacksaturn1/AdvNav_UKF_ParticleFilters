@@ -177,7 +177,10 @@ class MeasurementData:
                 imagePoints = np.array([p1,p2,p3,p4], dtype=np.float64)  # Create an array of the corners
                 imagePointsCollection = imagePoints if imagePointsCollection is None else np.vstack((imagePointsCollection, imagePoints))
                 objectPointsCollection = objectPoints if objectPointsCollection is None else np.vstack((objectPointsCollection, objectPoints))
-            
+            if imagePointsCollection is None or objectPointsCollection is None:
+                print("Error: No valid image points or object points found.")
+                return None, None
+            # SolvePnP for multiple AprilTags
             retval, rvec, tvec = cv2.solvePnP(objectPointsCollection, imagePointsCollection, self.camera_matrix, self.dist_coeffs)
             if retval is None or retval == False:
                 print(f"Error: solvePnP failed for AprilTag ID {tag_id}. Skipping this tag.")

@@ -167,21 +167,19 @@ def process_ukf_filter(file_name):
 
     return rmse
     
-    
-
-    
-
 def run_particle_filter_experiment(particle_count):
     results = []
-    results.append(process_particle_filter('studentdata0.mat', particle_count))
-    results.append(process_particle_filter('studentdata1.mat', particle_count))
-    results.append(process_particle_filter('studentdata2.mat', particle_count))
-    results.append(process_particle_filter('studentdata3.mat', particle_count))
-    results.append(process_particle_filter('studentdata4.mat', particle_count))
-    results.append(process_particle_filter('studentdata5.mat', particle_count))
-    results.append(process_particle_filter('studentdata6.mat', particle_count))
+    # DONT RUN FOR ALL FILES BECAUSE OF studentdata0 doesnt have 'omg' or 'acc' data
+    # results.append(process_particle_filter('studentdata0.mat', particle_count))
+
+    # results.append(process_particle_filter('studentdata1.mat', particle_count))
+    # results.append(process_particle_filter('studentdata2.mat', particle_count))
+    # results.append(process_particle_filter('studentdata3.mat', particle_count))
+    # results.append(process_particle_filter('studentdata4.mat', particle_count))
+    # results.append(process_particle_filter('studentdata5.mat', particle_count))
+    # results.append(process_particle_filter('studentdata6.mat', particle_count))
     results.append(process_particle_filter('studentdata7.mat', particle_count))
-    print(f"RMSE results for all datasets with Particle Filter-{particle_count}:", sum(results)/len(results))
+    print(f"RMSE results for all datasets with Particle Filter [{particle_count}]:", sum(results)/len(results))
 
 def run_ukf_filter_experiment():
     results = []
@@ -198,13 +196,13 @@ def run_ukf_filter_experiment():
 if __name__ == "__main__":
     
     # Ukf Filter
-    run_ukf_filter_experiment()
+    # run_ukf_filter_experiment()
     # Particle Filter
     run_particle_filter_experiment(250)
-    run_particle_filter_experiment(500)
-    run_particle_filter_experiment(750)
-    run_particle_filter_experiment(1000)
-    run_particle_filter_experiment(2000)
-    run_particle_filter_experiment(3000)
-    run_particle_filter_experiment(4000)
-    run_particle_filter_experiment(5000)
+    # run_particle_filter_experiment(500)
+    # run_particle_filter_experiment(750)
+    # run_particle_filter_experiment(1000)
+    # run_particle_filter_experiment(2000)
+    # run_particle_filter_experiment(3000)
+    # run_particle_filter_experiment(4000)
+    # run_particle_filter_experiment(5000)
