@@ -118,10 +118,15 @@ class MeasurementData:
             # rotation_z = self.rotation_matrix_z(rz)[0:3,0:3]
             rotation_x = R.from_euler('x', rx, degrees=False).as_matrix()
             rotation_z = R.from_euler('z', rz, degrees=False).as_matrix()
-            r_camera_to_robot = rotation_x @ rotation_z
-            t_camera_to_robot = np.array([[-0.04], [0.0], [-0.03]])
+            # r_camera_to_robot = rotation_x @ rotation_z
+            r_camera_to_robot = rotation_z @ rotation_x
+            # t_camera_to_robot = np.array([[-0.04], [0.0], [-0.03]])
+            t_camera_to_robot = np.array([-0.04, 0.0, 0.06]).T
             
-            cameraPosition =   (-np.matrix(r_world_to_camera).T @  np.matrix(tvec))+t_camera_to_robot
+            # cameraPosition =   (-np.matrix(r_world_to_camera).T @  np.matrix(tvec))+t_camera_to_robot
+            # cameraPosition =  (-(r_world_to_camera).T @  tvec)+t_camera_to_robot
+            cameraPosition =  (-(r_world_to_camera).T @  tvec)+t_camera_to_robot.reshape(3,1)
+
             r_world_to_robot =  r_world_to_camera @ r_camera_to_robot
             
             euler_angles = R.from_matrix(r_world_to_robot).as_euler('xyz', degrees=False)

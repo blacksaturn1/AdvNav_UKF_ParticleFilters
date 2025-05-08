@@ -17,12 +17,19 @@ class ParticleFilter:
         self.process_model = self.fx
 
         # Define the covariance matrices for gyroscope and accelerometer bias noise
+        # sigma_bg_x = 1
+        # sigma_bg_y = 1
+        # sigma_bg_z = 1
+        # sigma_ba_x = 2
+        # sigma_ba_y = 2
+        # sigma_ba_z = 2
         sigma_bg_x = 0.5
         sigma_bg_y = 0.5
         sigma_bg_z = 0.5
         sigma_ba_x = 0.5
         sigma_ba_y = 0.5
         sigma_ba_z = 0.5
+
         self.Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
         self.Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
         # Generate random noise for biases (Nbg and Nba)
@@ -120,16 +127,16 @@ class ParticleFilter:
         all = np.average(self.particles, weights=self.weights, axis=0)
         
         # # Orientation: average on a circle by using sin/cos
-        sin_roll  = np.average(np.sin(self.particles[:, 3]), weights=self.weights)
-        cos_roll  = np.average(np.cos(self.particles[:, 3]), weights=self.weights)
-        sin_pitch = np.average(np.sin(self.particles[:, 4]), weights=self.weights)
-        cos_pitch = np.average(np.cos(self.particles[:, 4]), weights=self.weights)
-        sin_yaw   = np.average(np.sin(self.particles[:, 5]), weights=self.weights)
-        cos_yaw   = np.average(np.cos(self.particles[:, 5]), weights=self.weights)
-        avg_roll  = np.arctan2(sin_roll, cos_roll)
-        avg_pitch = np.arctan2(sin_pitch, cos_pitch)
-        avg_yaw   = np.arctan2(sin_yaw, cos_yaw)
-        all[3:6] = np.array([avg_roll, avg_pitch, avg_yaw])
+        # sin_roll  = np.average(np.sin(self.particles[:, 3]), weights=self.weights)
+        # cos_roll  = np.average(np.cos(self.particles[:, 3]), weights=self.weights)
+        # sin_pitch = np.average(np.sin(self.particles[:, 4]), weights=self.weights)
+        # cos_pitch = np.average(np.cos(self.particles[:, 4]), weights=self.weights)
+        # sin_yaw   = np.average(np.sin(self.particles[:, 5]), weights=self.weights)
+        # cos_yaw   = np.average(np.cos(self.particles[:, 5]), weights=self.weights)
+        # avg_roll  = np.arctan2(sin_roll, cos_roll)
+        # avg_pitch = np.arctan2(sin_pitch, cos_pitch)
+        # avg_yaw   = np.arctan2(sin_yaw, cos_yaw)
+        # all[3:6] = np.array([avg_roll, avg_pitch, avg_yaw])
 
         return all
     
@@ -217,7 +224,6 @@ class ParticleFilter:
         xout[9:12] = gyro_bias_next
         xout[12:15] = accel_bias_next
 
-
         G = self.G_Matrix(x[3:6])
         U_w = (np.array([data['omg']]) + gyro_bias_prev).T
         q_dot = np.linalg.inv(G) @ U_w
@@ -254,6 +260,7 @@ class ParticleFilter:
         # self.R = rotation_z @ rotation_x @ rotation_y
         # self.R = rotation_y @ rotation_x @ rotation_z
         self.r = rotation_z @ rotation_y @ rotation_x
+        
         # check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
         return self.r
 

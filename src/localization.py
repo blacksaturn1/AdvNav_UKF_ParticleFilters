@@ -63,8 +63,18 @@ class Localization:
         dt = 0.
         time_last = 0.
         i=0
+        debug = True
         for data in self.mat_contents['data']:
             
+            dt = data['t'] - time_last
+            time_last = data['t']
+            if time_last>8.0 and debug:
+                print("Time of 15 seconds reached")
+                debug = False
+                # break
+            if is_initialized:
+                self.pf.predict(dt,data)
+
             if isinstance(data['id'],np.ndarray):
                 # This has no April tags found in the image
                 if len(data['id']) == 0:
@@ -75,18 +85,15 @@ class Localization:
             if position is None or orientation is None:
                 print("Warning: Pose estimation failed for the current data item. Skipping this item.")
                 continue  # Skip this item if pose estimation failed
-            dt = data['t'] - time_last
             if not is_initialized:
                 dt = 0.001
                 self.pf.particles[:,0:3] = np.tile(position, self.pf.num_particles).T
                 self.pf.particles[:,3:6] = np.tile(orientation.T, self.pf.num_particles).T
                 is_initialized = True
+                self.pf.predict(dt,data)
                 # self.pf.particles[:,9:12] = np.array([[0.0001,0.0001,0.0001]]).T
                 # self.pf.particles[:,12:15] = np.array([[0.0001,0.0001,0.0001]]).T    
-            time_last = data['t']
-            if time_last>15.0:
-                break
-            self.pf.predict(dt,data)
+            
             z = np.hstack((np.array(position).T,orientation))
             self.pf.update(z.T)
             self.pf.resample()
@@ -297,7 +304,7 @@ class Localization:
         self.axs[1].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[4,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
         self.axs[1].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[4,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
 
-        self.axs[2].plot(x, yaw, label='Actresults_filtered_npual', color='b', linewidth=1)  # Set color and linewidth for better visibility
+        self.axs[2].plot(x, yaw, label='Actual', color='b', linewidth=1)  # Set color and linewidth for better visibility
         self.axs[2].plot(self.results_np.T.squeeze()[6,:], self.results_np.T.squeeze()[5,:], label='Estimated', color='r', linewidth=1)  # Set color and linewidth for better visibility
         self.axs[2].plot(self.results_filtered_np.T.squeeze()[15,:], self.results_filtered_np.T.squeeze()[5,:], label='Filtered', color='g', linewidth=1)  # Set color and linewidth for better visibility
         
