@@ -198,11 +198,11 @@ if __name__ == "__main__":
     # Ukf Filter
     # run_ukf_filter_experiment()
     # Particle Filter
-    # run_particle_filter_experiment(250)
+    run_particle_filter_experiment(250)
     run_particle_filter_experiment(500)
-    # run_particle_filter_experiment(750)
-    # run_particle_filter_experiment(1000)
-    # run_particle_filter_experiment(2000)
-    # run_particle_filter_experiment(3000)
-    # run_particle_filter_experiment(4000)
-    # run_particle_filter_experiment(5000)
+    run_particle_filter_experiment(750)
+    run_particle_filter_experiment(1000)
+    run_particle_filter_experiment(2000)
+    run_particle_filter_experiment(3000)
+    run_particle_filter_experiment(4000)
+    run_particle_filter_experiment(5000)

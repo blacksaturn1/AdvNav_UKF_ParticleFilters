@@ -84,8 +84,8 @@ class Localization:
                 # self.pf.particles[:,9:12] = np.array([[0.0001,0.0001,0.0001]]).T
                 # self.pf.particles[:,12:15] = np.array([[0.0001,0.0001,0.0001]]).T    
             time_last = data['t']
-            if time_last>15.0:
-                break
+            # if time_last>15.0:
+                # break
             self.pf.predict(dt,data)
             z = np.hstack((np.array(position).T,orientation))
             self.pf.update(z.T)
