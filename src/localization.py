@@ -62,7 +62,9 @@ class Localization:
         is_initialized = False
         dt = 0.
         time_last = 0.
+        i=0
         for data in self.mat_contents['data']:
+            
             if isinstance(data['id'],np.ndarray):
                 # This has no April tags found in the image
                 if len(data['id']) == 0:
@@ -82,7 +84,8 @@ class Localization:
                 # self.pf.particles[:,9:12] = np.array([[0.0001,0.0001,0.0001]]).T
                 # self.pf.particles[:,12:15] = np.array([[0.0001,0.0001,0.0001]]).T    
             time_last = data['t']
-
+            if time_last>15.0:
+                break
             self.pf.predict(dt,data)
             z = np.hstack((np.array(position).T,orientation))
             self.pf.update(z.T)
@@ -94,6 +97,7 @@ class Localization:
             # result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
             self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
             self.results_filtered_np= filtered_state_x if self.results_filtered_np is None else np.vstack((self.results_filtered_np, filtered_state_x))
+
         
     def loadMatlabData(self,file_name):
         """
