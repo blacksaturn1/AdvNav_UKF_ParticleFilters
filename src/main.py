@@ -145,7 +145,7 @@ def process_particle_filter(file_name, particle_count=250):
     localization.process_particle_filter(particle_count=particle_count)
     # localization.process_data()
     # # localization.calculate_covariance()
-    rmse = localization.calculate_rmse()
+    rmse,_ = localization.calculate_rmse()
     localization.plot_trajectory()  # Plot the trajectory
     localization.plot_orientation()  # Plot the roll trajectory
 
@@ -160,8 +160,8 @@ def process_ukf_filter(file_name):
     rmse = .0    
     localization = Localization(file_name)
     localization.process_ukf_filter()
-    localization.calculate_covariance()
-    rmse = localization.calculate_rmse()
+    # localization.calculate_covariance()
+    rmse,_ = localization.calculate_rmse()
     localization.plot_trajectory()  # Plot the trajectory
     localization.plot_orientation()  # Plot the roll trajectory
 
@@ -183,7 +183,7 @@ def run_particle_filter_experiment(particle_count):
 
 def run_ukf_filter_experiment():
     results = []
-    results.append(process_ukf_filter('studentdata0.mat'))
+    # results.append(process_ukf_filter('studentdata0.mat'))
     results.append(process_ukf_filter('studentdata1.mat'))
     results.append(process_ukf_filter('studentdata2.mat'))
     results.append(process_ukf_filter('studentdata3.mat'))
@@ -196,13 +196,13 @@ def run_ukf_filter_experiment():
 if __name__ == "__main__":
     
     # Ukf Filter
-    # run_ukf_filter_experiment()
+    run_ukf_filter_experiment()
     # Particle Filter
-    run_particle_filter_experiment(250)
-    run_particle_filter_experiment(500)
-    run_particle_filter_experiment(750)
-    run_particle_filter_experiment(1000)
-    run_particle_filter_experiment(2000)
-    run_particle_filter_experiment(3000)
-    run_particle_filter_experiment(4000)
-    run_particle_filter_experiment(5000)
+    # run_particle_filter_experiment(250)
+    # run_particle_filter_experiment(500)
+    # run_particle_filter_experiment(750)
+    # run_particle_filter_experiment(1000)
+    # run_particle_filter_experiment(2000)
+    # run_particle_filter_experiment(3000)
+    # run_particle_filter_experiment(4000)
+    # run_particle_filter_experiment(5000)

@@ -202,21 +202,16 @@ class ParticleFilter:
 
 
     def fx(self, x, dt, data):
-        # xout = np.empty_like(x)data['rpy']
         xout = x.copy()
         if data.get('omg') is None or data.get('acc') is None:
             return xout
-         # P vector
-
+        
         gyro_bias_prev = x[9:12]
         accel_bias_prev = x[12:15]
-
         gyro_bias_next = gyro_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
         accel_bias_next = accel_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
-        
         xout[9:12] = gyro_bias_next
         xout[12:15] = accel_bias_next
-
 
         G = self.G_Matrix(x[3:6])
         U_w = (np.array([data['omg']]) + gyro_bias_prev).T
@@ -224,26 +219,13 @@ class ParticleFilter:
         xout[3:6] = q_dot.squeeze()
         
         U_a = (np.array([data['acc']]) + accel_bias_prev ).T
-        # Rq_matrix = self.Rq_matrix(data['rpy'])
         Rq_matrix = self.Rq_matrix(x[3:6])
-        # Rq_matrix = self.pose_to_rotation_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
-        # xout[6:9] = (Rq_matrix.T @ (U_a - g)).squeeze()
-        # xout[6:9] = (Rq_matrix.T @ (U_a - g)).squeeze()
         xout[6:9] = ((Rq_matrix.T @ U_a) - g).squeeze()
-        
-        # xout[0] = (x[6] * dt + x[0]) + (0.5 * (x[6] * dt**2)) + xout[9]
-        # xout[1] = (x[7] * dt + x[1]) + (0.5 * (x[7] * dt**2)) + xout[10]
-        # xout[2] = (x[8] * dt + x[2]) + (0.5 * (x[8] * dt**2)) + xout[11]
-        
+
         xout[0] = (x[6] * dt + x[0]) + x[9]
         xout[1] = (x[7] * dt + x[1]) + x[10]
         xout[2] = (x[8] * dt + x[2]) + x[11]
-        # xout[0] = (x[6] * dt + x[0])
-        # xout[1] = (x[7] * dt + x[1])
-        # xout[2] = (x[8] * dt + x[2])
-        
-
 
         return xout
 
@@ -253,7 +235,8 @@ class ParticleFilter:
         rotation_z = R.from_euler('z', rpy[2], degrees=False).as_matrix()
         # self.R = rotation_z @ rotation_x @ rotation_y
         # self.R = rotation_y @ rotation_x @ rotation_z
-        self.r = rotation_z @ rotation_y @ rotation_x
+        # self.r = rotation_z @ rotation_y @ rotation_x
+        self.r = rotation_x @ rotation_y @ rotation_z
         # check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
         return self.r
 

@@ -493,10 +493,11 @@ class Localization:
                              self.diff_matrix_estimated.T[x,2]**2)**0.5
         
         rmse_filtered = np.sqrt(distance_sum/self.diff_matrix_estimated.T.shape[0])
-        # print("RMSE of Filtered: ", rmse_filtered)
-        rmse_difference = rmse_measurement_model - rmse_filtered
+        print("RMSE of rmse_filtered: ", rmse_filtered)
+        print("RMSE of rmse_measurement_model: ", rmse_measurement_model)
+        # rmse_difference = rmse_measurement_model - rmse_filtered
         # print("RMSE difference: ", rmse_difference)
-        return rmse_difference
+        return rmse_filtered, rmse_measurement_model
     
 
         

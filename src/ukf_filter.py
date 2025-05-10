@@ -29,13 +29,12 @@ class UkfFilter:
         # points = MerweScaledSigmaPoints(n=15, alpha=.1, beta=2., kappa=0)
         
         self.Q = np.eye(15)*0.0015
-        self.Q[0,0]=0.015
-        self.Q[1,1]=0.015
+        self.Q[0,0]=0.01
+        self.Q[1,1]=0.01
         self.Q[2,2]=0.015
         self.Q[3,3]=0.001
         self.Q[4,4]=0.001
-        self.Q[5,5]=0.001
-
+        self.Q[5,5]=1
         self.check_covariance_matrix(self.Q)
         self.H = np.array([[1, 0 , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -45,7 +44,7 @@ class UkfFilter:
                            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            ])
         
-        self.ukf = UnscentedKalmanFilter(dim_x=15, dim_z=6, dt=0.001, hx=self.hx, fx=self.fx, points=points)
+        self.ukf = UnscentedKalmanFilter(dim_x=15, dim_z=6, dt=0.1, hx=self.hx, fx=self.fx, points=points)
         #  the measurement mean and noise covariance
         self.R = self.P_Matrix()
         self.ukf.R = self.R
@@ -54,17 +53,19 @@ class UkfFilter:
         self.ukf.Q = self.Q
 
         # # Define the covariance matrices for gyroscope and accelerometer bias noise
-        # sigma_bg_x = 0.025
-        # sigma_bg_y = 0.005
-        # sigma_bg_z = 0.015
-        # sigma_bg_z = 0.005
+        sigma_bg_x = 0.0025
+        sigma_bg_y = 0.01
+        sigma_bg_z = 0.0015
         
-        # sigma_ba_x = 0.015
-        # sigma_ba_y = 0.015
-        # sigma_ba_z = 0.015
-        # Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
-        # Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
-        # # Generate random noise for biases (Nbg and Nba)
+        
+        sigma_ba_x = 0.015
+        sigma_ba_y = 0.015
+        sigma_ba_z = 0.015
+        
+
+        self.Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
+        self.Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
+        # Generate random noise for biases (Nbg and Nba)
 
         # self.Nbg = np.random.multivariate_normal(mean=np.zeros(3), cov=Qg)
         # self.Nba = np.random.multivariate_normal(mean=np.zeros(3), cov=Qa)
@@ -126,38 +127,34 @@ class UkfFilter:
     
 
     def fx(self,x, dt,data):
-        # xout = np.empty_like(x)
         xout = x.copy()
         if data.get('omg') is None or data.get('acc') is None:
             return xout
-       
-        # q vector
-        G_matrix = self.G_Matrix(x[3:6])
-        # U_w = (np.array([data['omg']]) - x[9:12]).T
-        U_w = (np.array([data['omg']])).T
-        q_dot = np.linalg.inv(G_matrix) @ U_w
+        
+        gyro_bias_prev = x[9:12]
+        accel_bias_prev = x[12:15]
+        # gyro_bias_next = gyro_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
+        gyro_bias_next = (np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg))*dt
+        accel_bias_next = (np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa))*dt
+        xout[9:12] = gyro_bias_next
+        xout[12:15] = accel_bias_next
+
+        G = self.G_Matrix(x[3:6])
+        U_w = (np.array([data['omg']]) + gyro_bias_prev).T
+        q_dot = np.linalg.inv(G) @ U_w
         xout[3:6] = q_dot.squeeze()
-        # U_a = (np.array([data['acc']]) - x[12:15]).T
-        U_a = (np.array([data['acc']])).T
-
-        # I think this is the correct way to calculate the rotation matrix
+        
+        U_a = (np.array([data['acc']]) + accel_bias_prev ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
-        # Rq_matrix = self.Rq_matrix(data['rpy'])
         g = np.array([[0, 0, 9.81]]).T
-        xout[6:9] = ((Rq_matrix @ U_a) + g).squeeze()
+        xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()
         
-         # P vector
-        xout[0] = xout[6] * dt + x[0]
-        xout[1] = xout[7] * dt + x[1]
-        xout[2] = xout[8] * dt + x[2]
-
-        # I think the bias is not added to the state vector
-        # xout[9:12] = x[9:12] + self.Nbg
-        # xout[12:15] = x[12:15] + self.Nba
-        # xout[9:12] = self.Nbg
-        # xout[12:15] = self.Nba
+        xout[0] = (x[6] * dt + x[0]) + x[9]
+        xout[1] = (x[7] * dt + x[1]) + x[10]
+        xout[2] = (x[8] * dt + x[2]) + x[11]
+        
         return xout
-        
+    
     
     def hx(self, x):
         """
@@ -179,8 +176,14 @@ class UkfFilter:
  [-0.00074059 ,-0.00014287 ,-0.00132054, -0.00037419, -0.00050637,  0.00012994]]
         )
         P2 = np.diag([.008]*6)
+        P2[0,0] = 0.008
+        P2[1,1] = 0.008
+        P2[2,2] = 0.008
+        P2[3,3] = 0.08
+        P2[4,4] = 0.008
+        P2[5,5] = 0.001
+        # return P2
         return P2
-        # return P
         
         
         
@@ -200,9 +203,12 @@ class UkfFilter:
         rotation_z = R.from_euler('z', rpy[2], degrees=False).as_matrix()
         # self.R = rotation_z @ rotation_x @ rotation_y
         # self.R = rotation_y @ rotation_x @ rotation_z
-        self.R = rotation_z @ rotation_y @ rotation_x
-        check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
+        # self.R = rotation_z @ rotation_y @ rotation_x
+        # r= rotation_x @ rotation_y @ rotation_z
+        r= rotation_z @ rotation_y @ rotation_x
+        # r = R.from_euler('zyx', rpy, degrees=False).as_matrix()
+        # check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
         
-        return self.R
+        return r
         
        
