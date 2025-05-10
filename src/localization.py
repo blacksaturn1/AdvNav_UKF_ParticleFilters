@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
-from ukf_filter import UkfFilter
+from ukf_filter2 import UkfFilter2 as UkfFilter
 from particle_filter import ParticleFilter
 
 # import matplotlib.pyplot as plt

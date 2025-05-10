@@ -178,18 +178,18 @@ def run_particle_filter_experiment(particle_count):
     # results.append(process_particle_filter('studentdata4.mat', particle_count))
     # results.append(process_particle_filter('studentdata5.mat', particle_count))
     # results.append(process_particle_filter('studentdata6.mat', particle_count))
-    results.append(process_particle_filter('studentdata7.mat', particle_count))
+    # results.append(process_particle_filter('studentdata7.mat', particle_count))
     print(f"RMSE results for all datasets with Particle Filter [{particle_count}]:", sum(results)/len(results))
 
 def run_ukf_filter_experiment():
     results = []
     # results.append(process_ukf_filter('studentdata0.mat'))
-    results.append(process_ukf_filter('studentdata1.mat'))
-    results.append(process_ukf_filter('studentdata2.mat'))
-    results.append(process_ukf_filter('studentdata3.mat'))
-    results.append(process_ukf_filter('studentdata4.mat'))
-    results.append(process_ukf_filter('studentdata5.mat'))
-    results.append(process_ukf_filter('studentdata6.mat'))
+    # results.append(process_ukf_filter('studentdata1.mat'))
+    # results.append(process_ukf_filter('studentdata2.mat'))
+    # results.append(process_ukf_filter('studentdata3.mat'))
+    # results.append(process_ukf_filter('studentdata4.mat'))
+    # results.append(process_ukf_filter('studentdata5.mat'))
+    # results.append(process_ukf_filter('studentdata6.mat'))
     results.append(process_ukf_filter('studentdata7.mat'))
     print("RMSE results for all datasets with UKF Filter:", sum(results)/len(results))
 
