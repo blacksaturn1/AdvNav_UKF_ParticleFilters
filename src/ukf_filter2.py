@@ -5,13 +5,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
-from measurement_data import MeasurementData
-from numpy.random import randn
-from filterpy.kalman import UnscentedKalmanFilter
-from filterpy.common import Q_discrete_white_noise
-from filterpy.common import Q_continuous_white_noise
-from filterpy.kalman import JulierSigmaPoints
-
 
 # np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 # Get parent directory of the current script file
@@ -28,14 +21,17 @@ class UkfFilter2:
         self.n_measurements = 6
         # points = MerweScaledSigmaPoints(n=15, alpha=.1, beta=2., kappa=0)
         
-        self.Q = np.eye(15)*0.001
-        self.Q[0,0]=0.2
-        self.Q[1,1]=0.2
-        self.Q[2,2]=0.2
-        self.Q[3,3]=0.02
-        self.Q[4,4]=0.02
-        self.Q[5,5]=0.02
+        self.Q = np.eye(15)*0.1
+        self.Q[0,0]=0.075
+        self.Q[1,1]=0.075
+        self.Q[2,2]=0.075
+        self.Q[3,3]=0.01
+        self.Q[4,4]=0.01
+        self.Q[5,5]=0.01
         self.check_covariance_matrix(self.Q)
+        self.P = np.eye(self.n_states)*0.01
+
+
         self.H = np.array([[1, 0 , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -97,7 +93,7 @@ class UkfFilter2:
         # print("Sigma points: ", points)
         # State
         self.x = np.zeros(self.n)
-        self.P = np.eye(self.n)
+        
 
 
 
@@ -239,18 +235,18 @@ class UkfFilter2:
         xout[12:15] = accel_bias_next
 
         G = self.G_Matrix(x[3:6])
-        U_w = (np.array([data['omg']]) + gyro_bias_prev).T
+        U_w = (np.array([data['omg']]) ).T
         q_dot = np.linalg.inv(G) @ U_w
         xout[3:6] = q_dot.squeeze()
         
-        U_a = (np.array([data['acc']]) + accel_bias_prev ).T
+        U_a = (np.array([data['acc']]) ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
         xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()
         
-        xout[0] = (x[6] * dt + x[0]) + x[9]
-        xout[1] = (x[7] * dt + x[1]) + x[10]
-        xout[2] = (x[8] * dt + x[2]) + x[11]
+        xout[0] = (x[6] * dt + x[0])
+        xout[1] = (x[7] * dt + x[1])
+        xout[2] = (x[8] * dt + x[2])
         
         return xout
     
@@ -274,13 +270,13 @@ class UkfFilter2:
  [ 0.00853663 ,-0.00188542 , 0.00840728 , 0.00250991,  0.00830289, -0.00050637],
  [-0.00074059 ,-0.00014287 ,-0.00132054, -0.00037419, -0.00050637,  0.00012994]]
         )
-        P2 = np.diag([.008]*6)
-        P2[0,0] = 0.008
-        P2[1,1] = 0.008
-        P2[2,2] = 0.008
-        P2[3,3] = 0.008
-        P2[4,4] = 0.008
-        P2[5,5] = 0.001
+        P2 = np.diag([.001]*6)
+        P2[0,0] = 0.0025
+        P2[1,1] = 0.0025
+        P2[2,2] = 0.0025
+        # P2[3,3] = 0.1
+        # P2[4,4] = 0.1
+        # P2[5,5] = 0.1
         # return P2
         return P2
         
