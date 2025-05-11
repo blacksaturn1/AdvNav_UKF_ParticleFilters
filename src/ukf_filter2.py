@@ -11,7 +11,7 @@ from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
 from filterpy.common import Q_continuous_white_noise
 from filterpy.kalman import JulierSigmaPoints
-from filterpy.kalman import MerweScaledSigmaPoints
+
 
 # np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
 # Get parent directory of the current script file
@@ -24,17 +24,17 @@ class UkfFilter2:
         self.debug = False
         self.measurement_data = measurement_data
         self.R = None
-
-        points = JulierSigmaPoints(n=15, kappa=0.1)
+        self.n_states = 15
+        self.n_measurements = 6
         # points = MerweScaledSigmaPoints(n=15, alpha=.1, beta=2., kappa=0)
         
-        self.Q = np.eye(15)*0.0015
-        self.Q[0,0]=0.01
-        self.Q[1,1]=0.01
-        self.Q[2,2]=0.015
-        self.Q[3,3]=0.001
-        self.Q[4,4]=0.001
-        self.Q[5,5]=1
+        self.Q = np.eye(15)*0.001
+        self.Q[0,0]=0.2
+        self.Q[1,1]=0.2
+        self.Q[2,2]=0.2
+        self.Q[3,3]=0.02
+        self.Q[4,4]=0.02
+        self.Q[5,5]=0.02
         self.check_covariance_matrix(self.Q)
         self.H = np.array([[1, 0 , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -44,13 +44,13 @@ class UkfFilter2:
                            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            ])
         
-        self.ukf = UnscentedKalmanFilter(dim_x=15, dim_z=6, dt=0.1, hx=self.hx, fx=self.fx, points=points)
+        # self.ukf = UnscentedKalmanFilter(dim_x=15, dim_z=6, dt=0.1, hx=self.hx, fx=self.fx, points=points)
         #  the measurement mean and noise covariance
         self.R = self.P_Matrix()
-        self.ukf.R = self.R
+        # self.ukf.R = self.R
         self.check_covariance_matrix(self.R)
         
-        self.ukf.Q = self.Q
+        # self.ukf.Q = self.Q
 
         # # Define the covariance matrices for gyroscope and accelerometer bias noise
         sigma_bg_x = 0.0025
@@ -69,7 +69,63 @@ class UkfFilter2:
 
         # self.Nbg = np.random.multivariate_normal(mean=np.zeros(3), cov=Qg)
         # self.Nba = np.random.multivariate_normal(mean=np.zeros(3), cov=Qa)
+        # self.Wm = np.zeros(2 * self.n_states + 1)
+        # self.Wc = np.zeros(2 * self.n_states + 1)
+        # self.Wm[0] = 1
+        # self.Wc[0] = 1
+        # self.Wm[1:] = 0.5
+        # self.Wc[1:] = 0.5
+        # self.Wc[0] += (1 - 0.1**2 + 2)
+        # self.Wm[1:] = 0.5 / (self.n_states + 0.1)
+        # self.Wc[1:] = 0.5 / (self.n_states + 0.1)
+        alpha = 0.1
+        beta = 2
+        kappa = 0
+        self.n = self.n_states
+        self.lambda_ = alpha**2 * (self.n + kappa) - self.n
 
+        # Weights
+        self.Wm = np.full(2 * self.n + 1, 0.5 / (self.n + self.lambda_))
+        self.Wc = np.copy(self.Wm)
+        self.Wm[0] = self.lambda_ / (self.n + self.lambda_)
+        self.Wc[0] = self.Wm[0] + (1 - alpha**2 + beta)
+
+
+        mu = np.zeros(self.n_states)
+        Sigma = np.eye(self.n_states) * 0.1
+        points,_,_ = self.julier_sigma_points(mu, Sigma)
+        # print("Sigma points: ", points)
+        # State
+        self.x = np.zeros(self.n)
+        self.P = np.eye(self.n)
+
+
+
+
+
+    def julier_sigma_points(self,mu, Sigma, alpha=1e-3, beta=2, kappa=0):
+        n = mu.shape[0]
+        lambda_ = alpha**2 * (n + kappa) - n
+        sigma_points = np.zeros((2 * n + 1, n))
+        weights_mean = np.zeros(2 * n + 1)
+        weights_cov = np.zeros(2 * n + 1)
+
+        # Cholesky decomposition
+        sqrt_matrix = np.linalg.cholesky((n + lambda_) * Sigma)
+
+        # Sigma points
+        sigma_points[0] = mu
+        for i in range(n):
+            sigma_points[i + 1] = mu + sqrt_matrix[:, i]
+            sigma_points[n + i + 1] = mu - sqrt_matrix[:, i]
+
+        # Weights
+        weights_mean[0] = lambda_ / (n + lambda_)
+        weights_cov[0] = lambda_ / (n + lambda_) + (1 - alpha**2 + beta)
+        weights_mean[1:] = weights_cov[1:] = 1 / (2 * (n + lambda_))
+
+        return sigma_points, weights_mean, weights_cov
+    
     def check_covariance_matrix(self, matrix):
         if np.allclose(matrix, matrix.T):
             if self.debug:
@@ -85,6 +141,17 @@ class UkfFilter2:
         else:
             print("Covariance matrix is not positive definite.")
     
+    def generate_sigma_points(self):
+        sigma_points = np.zeros((2 * self.n + 1, self.n))
+        self.x = self.x.reshape(-1,1)
+        sigma_points[0] = self.x.squeeze()
+        sqrt_P = np.linalg.cholesky((self.n + self.lambda_) * self.P)
+        for i in range(self.n):
+            sigma_points[i + 1] = (self.x + sqrt_P[:, i].reshape(-1,1)).squeeze()
+            sigma_points[i + 1 + self.n] = (self.x - sqrt_P[:, i].reshape(-1,1)).squeeze()
+            
+        return sigma_points
+    
     def predict(self, dt, data):
         """
         Predict the next state based on the current state and measurement data.
@@ -93,8 +160,18 @@ class UkfFilter2:
         :param data: Measurement data.
         :return: Predicted state.
         """
-        self.ukf.predict(dt,fx=self.fx,data=data)
-        return self.ukf.x
+        # self.ukf.predict(dt,fx=self.fx,data=data)
+        sigma_pts = self.generate_sigma_points()
+        propagated = np.array([self.fx(pt, dt,data) for pt in sigma_pts])
+        self.x = np.sum(self.Wm[:, None] * propagated, axis=0)
+        self.P = self.Q.copy()
+        for i in range(2 * self.n + 1):
+            diff = (propagated[i] - self.x).reshape(-1, 1)
+            self.P += self.Wc[i] * diff @ diff.T
+        self._sigma_pts_pred = propagated
+        return self.x.squeeze()
+        # self.ukf.predict(dt, data=data)
+        # return self.ukf.x
     
     def update(self, z):
         """
@@ -103,9 +180,31 @@ class UkfFilter2:
         :param data: Measurement data.
         :return: Updated state.
         """
-        self.ukf.update(z.squeeze())
+
+        Z_sigma = np.array([self.hx(pt) for pt in self._sigma_pts_pred])
+        z_pred = np.sum(self.Wm[:, None] * Z_sigma, axis=0)
+
+        S = self.R.copy()
+        for i in range(2 * self.n + 1):
+            dz = (Z_sigma[i] - z_pred).reshape(-1, 1)
+            S += self.Wc[i] * dz @ dz.T
+
+        Pxz = np.zeros((self.n, self.n_measurements))
+        for i in range(2 * self.n + 1):
+            dx = (self._sigma_pts_pred[i] - self.x).reshape(-1, 1)
+            dz = (Z_sigma[i] - z_pred).reshape(-1, 1)
+            Pxz += self.Wc[i] * dx @ dz.T
+
+        K = Pxz @ np.linalg.inv(S)
+        self.x = self.x.reshape(-1, 1) + K @ (z - z_pred.reshape(-1, 1))
+        self.P = self.P - K @ S @ K.T
+
+
+
+        # self.ukf.update(z.squeeze())
         
-        return self.ukf.x
+        # return self.ukf.x
+        return self.x.squeeze()
         
     
     def G_Matrix(self, rpy):
@@ -179,7 +278,7 @@ class UkfFilter2:
         P2[0,0] = 0.008
         P2[1,1] = 0.008
         P2[2,2] = 0.008
-        P2[3,3] = 0.08
+        P2[3,3] = 0.008
         P2[4,4] = 0.008
         P2[5,5] = 0.001
         # return P2

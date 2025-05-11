@@ -142,62 +142,62 @@ class ParticleFilter:
         particles = np.random.multivariate_normal(self.mean_init, self.cov_init, size=num_particles)
         return particles
     
-    def fx2(self, x, dt, data):
-        xout = x.copy()
-        if data.get('omg') is None or data.get('acc') is None:
-            return xout
-        angular_velocity = np.array([data['omg']])
-        linear_acceleration = np.array([data['acc']])
-        position_prev = x[0:3]
-        orientation_prev = x[3:6]
-        velocity_prev = x[6:9]
-        gyro_bias_prev = x[9:12]
-        accel_bias_prev = x[12:15]
+    # def fx2(self, x, dt, data):
+    #     xout = x.copy()
+    #     if data.get('omg') is None or data.get('acc') is None:
+    #         return xout
+    #     angular_velocity = np.array([data['omg']])
+    #     linear_acceleration = np.array([data['acc']])
+    #     position_prev = x[0:3]
+    #     orientation_prev = x[3:6]
+    #     velocity_prev = x[6:9]
+    #     gyro_bias_prev = x[9:12]
+    #     accel_bias_prev = x[12:15]
 
-        # 1. Update Orientation
-        corrected_angular_velocity = angular_velocity - gyro_bias_prev
-        rotation_vector = corrected_angular_velocity * dt
-        rotation = R.from_rotvec(rotation_vector)
-        # quaternion_prev = R.from_rotvec(orientation_prev).as_quat()
-        quaternion_prev = R.from_euler('xyz', orientation_prev, degrees=False).as_quat()
-        quaternion_next = rotation.as_quat() * quaternion_prev  # Quaternion multiplication: q_next = q_rot * q_prev
-        # quaternion_next = R.from_quat(quaternion_next).as_quat() # Ensure unit quaternion (numerical stability)
-        quaternion_next = quaternion_next / np.linalg.norm(quaternion_next)  # Ensure unit quaternion (numerical stability)
-        xout[3:6] = R.from_quat(quaternion_next).as_euler('xyz', degrees=False)
+    #     # 1. Update Orientation
+    #     corrected_angular_velocity = angular_velocity - gyro_bias_prev
+    #     rotation_vector = corrected_angular_velocity * dt
+    #     rotation = R.from_rotvec(rotation_vector)
+    #     # quaternion_prev = R.from_rotvec(orientation_prev).as_quat()
+    #     quaternion_prev = R.from_euler('xyz', orientation_prev, degrees=False).as_quat()
+    #     quaternion_next = rotation.as_quat() * quaternion_prev  # Quaternion multiplication: q_next = q_rot * q_prev
+    #     # quaternion_next = R.from_quat(quaternion_next).as_quat() # Ensure unit quaternion (numerical stability)
+    #     quaternion_next = quaternion_next / np.linalg.norm(quaternion_next)  # Ensure unit quaternion (numerical stability)
+    #     xout[3:6] = R.from_quat(quaternion_next).as_euler('xyz', degrees=False)
         
-        # 2. Update Velocity
-        # Get rotation matrix from previous quaternion
-        rotation_matrix_prev = R.from_quat(quaternion_prev).as_matrix()
-        # Corrected acceleration in body frame
-        corrected_acceleration_body = linear_acceleration - accel_bias_prev
-        # Corrected linear acceleration in world framedata['rpy']
-        gravity = np.array([0, 0, 9.81]).T  # Assuming Z-axis is upwards
-        acceleration_nav = (rotation_matrix_prev @ corrected_acceleration_body.T).T + gravity
-        # Update velocity
-        velocity_next = velocity_prev + acceleration_nav * dt
-        process_noise = np.diag([0.01, 0.01, 0.01])  # Process noise covariance for position
-        velocity_next += np.random.multivariate_normal(
-                            np.zeros(3), process_noise) * dt
-        xout[6:9] = velocity_next
+    #     # 2. Update Velocity
+    #     # Get rotation matrix from previous quaternion
+    #     rotation_matrix_prev = R.from_quat(quaternion_prev).as_matrix()
+    #     # Corrected acceleration in body frame
+    #     corrected_acceleration_body = linear_acceleration - accel_bias_prev
+    #     # Corrected linear acceleration in world framedata['rpy']
+    #     gravity = np.array([0, 0, 9.81]).T  # Assuming Z-axis is upwards
+    #     acceleration_nav = (rotation_matrix_prev @ corrected_acceleration_body.T).T + gravity
+    #     # Update velocity
+    #     velocity_next = velocity_prev + acceleration_nav * dt
+    #     process_noise = np.diag([0.01, 0.01, 0.01])  # Process noise covariance for position
+    #     velocity_next += np.random.multivariate_normal(
+    #                         np.zeros(3), process_noise) * dt
+    #     xout[6:9] = velocity_next
         
-        # 3. Update Position
-        position_next = position_prev + (velocity_next * dt) #+ (0.5 * (acceleration_nav * dt**2))
-        process_noise_cov = np.diag([0.01, 0.01, 0.01])  # Process noise covariance for position
-        position_next += np.random.multivariate_normal(
-                            np.zeros(3), process_noise_cov) * dt
-        xout[0:3] = position_next
+    #     # 3. Update Position
+    #     position_next = position_prev + (velocity_next * dt) #+ (0.5 * (acceleration_nav * dt**2))
+    #     process_noise_cov = np.diag([0.01, 0.01, 0.01])  # Process noise covariance for position
+    #     position_next += np.random.multivariate_normal(
+    #                         np.zeros(3), process_noise_cov) * dt
+    #     xout[0:3] = position_next
 
-        # 4. Update Biases
-        # gyro_bias_next = gyro_bias_prev + np.random.multivariate_normal(
-        #     np.zeros(3), self.Qg    ) * dt
-        # accel_bias_next = accel_bias_prev + np.random.multivariate_normal(
-        #     np.zeros(3), self.Qa    ) * dt
-        gyro_bias_next = gyro_bias_prev + self.Nbg*dt
-        accel_bias_next = accel_bias_prev + self.Nba*dt
+    #     # 4. Update Biases
+    #     # gyro_bias_next = gyro_bias_prev + np.random.multivariate_normal(
+    #     #     np.zeros(3), self.Qg    ) * dt
+    #     # accel_bias_next = accel_bias_prev + np.random.multivariate_normal(
+    #     #     np.zeros(3), self.Qa    ) * dt
+    #     gyro_bias_next = gyro_bias_prev + self.Nbg*dt
+    #     accel_bias_next = accel_bias_prev + self.Nba*dt
         
-        xout[9:12] = gyro_bias_next
-        xout[12:15] = accel_bias_next
-        return xout
+    #     xout[9:12] = gyro_bias_next
+    #     xout[12:15] = accel_bias_next
+    #     return xout
 
 
 
@@ -208,8 +208,8 @@ class ParticleFilter:
         
         gyro_bias_prev = x[9:12]
         accel_bias_prev = x[12:15]
-        gyro_bias_next = gyro_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
-        accel_bias_next = accel_bias_prev + np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
+        gyro_bias_next = np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
+        accel_bias_next = np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
         xout[9:12] = gyro_bias_next
         xout[12:15] = accel_bias_next
 
@@ -221,7 +221,7 @@ class ParticleFilter:
         U_a = (np.array([data['acc']]) + accel_bias_prev ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
-        xout[6:9] = ((Rq_matrix.T @ U_a) - g).squeeze()
+        xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()
 
         xout[0] = (x[6] * dt + x[0]) + x[9]
         xout[1] = (x[7] * dt + x[1]) + x[10]
@@ -235,8 +235,8 @@ class ParticleFilter:
         rotation_z = R.from_euler('z', rpy[2], degrees=False).as_matrix()
         # self.R = rotation_z @ rotation_x @ rotation_y
         # self.R = rotation_y @ rotation_x @ rotation_z
-        # self.r = rotation_z @ rotation_y @ rotation_x
-        self.r = rotation_x @ rotation_y @ rotation_z
+        self.r = rotation_z @ rotation_y @ rotation_x
+        # self.r = rotation_x @ rotation_y @ rotation_z
         # check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
         return self.r
 
