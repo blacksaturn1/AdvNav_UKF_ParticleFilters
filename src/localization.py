@@ -9,8 +9,6 @@ from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
 from ukf_filter2 import UkfFilter2 as UkfFilter
 from particle_filter import ParticleFilter
-
-# import matplotlib.pyplot as plt
 # import matplotlib.animation as animation
 
 # np.set_printoptions(formatter={'float_kind': "{: .3f}".format})
