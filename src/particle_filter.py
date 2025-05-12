@@ -10,9 +10,7 @@ class ParticleFilter:
         self.state_dim = state_dim
         self.mean_init = np.zeros(15)
         
-        self.cov_init = np.eye(15)*0.0015
         
-        self.particles = self.init_state_sampler(num_particles, state_dim)
         self.weights = np.ones(num_particles) / num_particles
         self.process_model = self.fx
 
@@ -25,9 +23,6 @@ class ParticleFilter:
         sigma_ba_z = 0.5
         self.Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
         self.Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
-        # Generate random noise for biases (Nbg and Nba)
-        self.Nbg = np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)
-        self.Nba = np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)
         self.H = np.array([[1, 0 , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -36,29 +31,26 @@ class ParticleFilter:
                            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                            ])
         
-        self.measurement_cov = np.eye(6)*0.001
-        self.measurement_cov[0, 0] = 0.001
-        self.measurement_cov[1, 1] = 0.001
-        self.measurement_cov[2, 2] = 0.001
-        self.measurement_cov[3, 3] = 0.01
-        self.measurement_cov[4, 4] = 0.01
-        self.measurement_cov[5, 5] = 0.01
-        
-        # self.measurement_cov[0, 0] = 0.015
-        # self.measurement_cov[1, 1] = 0.015
-        # self.measurement_cov[2, 2] = 0.015
-        # self.measurement_cov[3, 3] = 0.001
-        # self.measurement_cov[4, 4] = 0.001
-        # self.measurement_cov[5, 5] = 0.001
-        
-
+        self.R = np.diag([
+            .01, .01, .01,           # position (large if starting with vague initial pose)
+            np.deg2rad(15.0)**2,np.deg2rad(15.0)**2, np.deg2rad(15.0)**2           # orientation (low confidence)
+        ])
+        self.P = np.diag([
+            .0015, .0015, .0015,           # position (large if starting with vague initial pose)
+            np.deg2rad(90.0)**2, np.deg2rad(90.0)**2, np.deg2rad(90.0)**2,           # orientation (in radians; small if initial orientation is known)
+            0.1, 0.1, 0.1,           # velocity (moderate confidence)
+            
+            0.01, 0.01, 0.01,      # gyro bias (smaller drift uncertainty if high-quality IMU)
+            0.1, 0.1, 0.1        # accel bias (usually start near zero bias with modest uncertainty)
+        ])
+        self.particles = self.init_state_sampler(num_particles, state_dim)
 
     def predict(self, dt=1, control_input=None):
         for i in range(self.num_particles):
             self.particles[i] = self.process_model(self.particles[i], dt, control_input)
 
     def update(self, measurement):
-        mvn = multivariate_normal( cov=self.measurement_cov )
+        mvn = multivariate_normal(mean=np.zeros(6), cov=self.R )
         pos_and_orientation_diff = self.particles[:, 0:6] - measurement[0:6].T # position/orientation error for each particle 
         self.weights = mvn.pdf(pos_and_orientation_diff)
         self.weights += 1e-300  # prevent divide by zero
@@ -110,16 +102,19 @@ class ParticleFilter:
         # self.weights = new_weights
 
     def resample(self):
-        indices = np.random.choice(
-            self.num_particles, size=self.num_particles, p=self.weights
-        )
-        self.particles = self.particles[indices]
-        # self.weights = np.ones(self.num_particles) / self.num_particles
+        N_eff = 1. / np.sum(self.weights**2)
+        if N_eff < self.num_particles / 2:
+            indices = np.random.choice(
+                self.num_particles, size=self.num_particles, p=self.weights
+            )
+            self.particles = self.particles[indices]
+            self.weights.fill(1.0 / self.num_particles)
+        
 
     def estimate(self):
         all = np.average(self.particles, weights=self.weights, axis=0)
         
-        # # Orientation: average on a circle by using sin/cos
+        # Orientation: average on a circle by using sin/cos
         sin_roll  = np.average(np.sin(self.particles[:, 3]), weights=self.weights)
         cos_roll  = np.average(np.cos(self.particles[:, 3]), weights=self.weights)
         sin_pitch = np.average(np.sin(self.particles[:, 4]), weights=self.weights)
@@ -139,7 +134,7 @@ class ParticleFilter:
         # Implement the initialization of particles here
         # For example, you can sample from a uniform distribution
         # return np.random.uniform(-1, 1, (num_particles, state_dim))
-        particles = np.random.multivariate_normal(self.mean_init, self.cov_init, size=num_particles)
+        particles = np.random.multivariate_normal(self.mean_init, self.P, size=num_particles)
         return particles
     
     # def fx2(self, x, dt, data):
@@ -208,24 +203,24 @@ class ParticleFilter:
         
         gyro_bias_prev = x[9:12]
         accel_bias_prev = x[12:15]
-        gyro_bias_next = np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
-        accel_bias_next = np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
-        xout[9:12] = gyro_bias_next
-        xout[12:15] = accel_bias_next
+        xout[9:12] += np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
+        xout[12:15] += np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
 
         G = self.G_Matrix(x[3:6])
         U_w = (np.array([data['omg']]) + gyro_bias_prev).T
         q_dot = np.linalg.inv(G) @ U_w
-        xout[3:6] = q_dot.squeeze()
+        xout[3:6] += q_dot.squeeze()*dt
+        # handle angle wrapping
+        xout[3:6] = np.arctan2(np.sin(xout[3:6]), np.cos(xout[3:6]))  # Normalize angles
         
         U_a = (np.array([data['acc']]) + accel_bias_prev ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
         xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()
 
-        xout[0] = (x[6] * dt + x[0]) + x[9]
-        xout[1] = (x[7] * dt + x[1]) + x[10]
-        xout[2] = (x[8] * dt + x[2]) + x[11]
+        xout[0] = (x[6] * dt + x[0])
+        xout[1] = (x[7] * dt + x[1])
+        xout[2] = (x[8] * dt + x[2])
 
         return xout
 
@@ -233,12 +228,9 @@ class ParticleFilter:
         rotation_x = R.from_euler('x', rpy[0], degrees=False).as_matrix()
         rotation_y = R.from_euler('y', rpy[1], degrees=False).as_matrix()
         rotation_z = R.from_euler('z', rpy[2], degrees=False).as_matrix()
-        # self.R = rotation_z @ rotation_x @ rotation_y
-        # self.R = rotation_y @ rotation_x @ rotation_z
-        self.r = rotation_z @ rotation_y @ rotation_x
-        # self.r = rotation_x @ rotation_y @ rotation_z
-        # check = R.from_matrix(self.R).as_euler('xyz', degrees=False)
-        return self.r
+        # r = rotation_z @ rotation_y @ rotation_x
+        r = rotation_x @ rotation_y @ rotation_z
+        return r
 
     def pose_to_rotation_matrix(self,rpy):
         roll, pitch, yaw = rpy
