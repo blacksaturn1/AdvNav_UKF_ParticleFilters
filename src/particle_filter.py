@@ -15,12 +15,12 @@ class ParticleFilter:
         self.process_model = self.fx
 
         # Define the covariance matrices for gyroscope and accelerometer bias noise
-        sigma_bg_x = 0.5
-        sigma_bg_y = 0.5
-        sigma_bg_z = 0.5
-        sigma_ba_x = 0.5
-        sigma_ba_y = 0.5
-        sigma_ba_z = 0.5
+        sigma_bg_x = .7
+        sigma_bg_y = .7
+        sigma_bg_z = .7
+        sigma_ba_x = 0.75
+        sigma_ba_y = 0.75
+        sigma_ba_z = 0.75
         self.Qg = np.diag([sigma_bg_x**2, sigma_bg_y**2, sigma_bg_z**2])  # Gyroscope bias noise covariance
         self.Qa = np.diag([sigma_ba_x**2, sigma_ba_y**2, sigma_ba_z**2])  # Accelerometer bias noise covariance
         self.H = np.array([[1, 0 , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -32,11 +32,11 @@ class ParticleFilter:
                            ])
         
         self.R = np.diag([
-            .01, .01, .01,           # position (large if starting with vague initial pose)
-            np.deg2rad(15.0)**2,np.deg2rad(15.0)**2, np.deg2rad(15.0)**2           # orientation (low confidence)
+            .001, .001, .001,           # position (large if starting with vague initial pose)
+            np.deg2rad(75.0)**2,np.deg2rad(75.0)**2, np.deg2rad(75.0)**2           # orientation (low confidence)
         ])
         self.P = np.diag([
-            .0015, .0015, .0015,           # position (large if starting with vague initial pose)
+            .15, .15, .15,           # position (large if starting with vague initial pose)
             np.deg2rad(90.0)**2, np.deg2rad(90.0)**2, np.deg2rad(90.0)**2,           # orientation (in radians; small if initial orientation is known)
             0.1, 0.1, 0.1,           # velocity (moderate confidence)
             
@@ -51,6 +51,9 @@ class ParticleFilter:
 
     def update(self, measurement):
         mvn = multivariate_normal(mean=np.zeros(6), cov=self.R )
+        # Clip the angles
+        self.particles[:,3:6]=np.arctan2( np.sin(self.particles[:,3:6]),np.cos(self.particles[:,3:6]) )
+        measurement[3:6] = np.arctan2( np.sin(measurement[3:6]),np.cos(measurement[3:6]) )
         pos_and_orientation_diff = self.particles[:, 0:6] - measurement[0:6].T # position/orientation error for each particle 
         self.weights = mvn.pdf(pos_and_orientation_diff)
         self.weights += 1e-300  # prevent divide by zero
@@ -205,22 +208,23 @@ class ParticleFilter:
         accel_bias_prev = x[12:15]
         xout[9:12] += np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qg)*dt
         xout[12:15] += np.random.multivariate_normal(mean=np.zeros(3), cov=self.Qa)*dt
-
+        
         G = self.G_Matrix(x[3:6])
-        U_w = (np.array([data['omg']]) + gyro_bias_prev).T
+        U_w = (np.array(data['omg']) + gyro_bias_prev).T
         q_dot = np.linalg.inv(G) @ U_w
-        xout[3:6] += q_dot.squeeze()*dt
+        xout[3:6] += q_dot.squeeze()*dt 
         # handle angle wrapping
         xout[3:6] = np.arctan2(np.sin(xout[3:6]), np.cos(xout[3:6]))  # Normalize angles
         
         U_a = (np.array([data['acc']]) + accel_bias_prev ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
-        xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()
+        xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze() * dt
 
-        xout[0] = (x[6] * dt + x[0])
-        xout[1] = (x[7] * dt + x[1])
-        xout[2] = (x[8] * dt + x[2])
+        v = np.random.multivariate_normal(mean=np.zeros(3), cov=np.diag([.75,.75,.75]))*dt
+        xout[0] = (x[6] * dt + x[0]) +v[0]
+        xout[1] = (x[7] * dt + x[1]) +v[1]
+        xout[2] = (x[8] * dt + x[2]) +v[2]
 
         return xout
 
