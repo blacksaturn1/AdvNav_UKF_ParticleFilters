@@ -29,19 +29,19 @@ class UkfFilter2:
         self.P = np.diag([
             1, 1, 1,           # position (large if starting with vague initial pose)
             np.deg2rad(90.0)**2, np.deg2rad(90.0)**2, np.deg2rad(90.0)**2,           # orientation (in radians; small if initial orientation is known)
-            0.1, 0.1, 0.1,           # velocity (moderate confidence)
+            0.2, 0.2, 0.2,           # velocity (moderate confidence)
             
             0.01, 0.01, 0.01,      # gyro bias (smaller drift uncertainty if high-quality IMU)
             0.1, 0.1, 0.1        # accel bias (usually start near zero bias with modest uncertainty)
         ])
         self.check_covariance_matrix(self.P)
         self.Q = np.diag([
-            .9, .9, .9,           # position (large if starting with vague initial pose)
-            np.deg2rad(45.0)**2, np.deg2rad(45.0)**2, np.deg2rad(45.0)**2,           # orientation (in radians; small if initial orientation is known)
-            .1, .1, .1,           # velocity (moderate confidence)
+            .0001, .0001, .0001,           # position (large if starting with vague initial pose)
+            np.deg2rad(5.0)**2, np.deg2rad(5.0)**2, np.deg2rad(5.0)**2,           # orientation (in radians; small if initial orientation is known)
+            .2, .2, .2,           # velocity (moderate confidence)
             
             0.01, 0.01, 0.01,      # gyro bias (smaller drift uncertainty if high-quality IMU)
-            0.001, 0.001, 0.001        # accel bias (usually start near zero bias with modest uncertainty)
+            0.1, 0.1, 0.1        # accel bias (usually start near zero bias with modest uncertainty)
         ])
         self.check_covariance_matrix(self.Q)
         
@@ -210,17 +210,17 @@ class UkfFilter2:
         G = self.G_Matrix(rpy)
         U_w = (np.array([data['omg']]) ).T
         q_dot = np.linalg.inv(G) @ U_w
-        xout[3:6] = q_dot.squeeze()
+        xout[3:6] += q_dot.squeeze()*dt
         
         U_a = (np.array([data['acc']]) ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
-        xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()
+        xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze()*dt
         # xout[6:9] *= 0.97  # damp velocity slightly
         xout[0] = (x[6] * dt + x[0])
         xout[1] = (x[7] * dt + x[1])
         xout[2] = (x[8] * dt + x[2])
-        # xout[3:6] = (xout[3:6] + np.pi) % (2 * np.pi) - np.pi
+        xout[3:6] = (xout[3:6] + np.pi) % (2 * np.pi) - np.pi
         return xout
     
     
