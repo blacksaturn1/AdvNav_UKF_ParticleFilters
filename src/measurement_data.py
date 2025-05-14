@@ -119,7 +119,7 @@ class MeasurementData:
             rotation_x = R.from_euler('x', rx, degrees=False).as_matrix()
             rotation_z = R.from_euler('z', rz, degrees=False).as_matrix()
             r_camera_to_robot = rotation_x @ rotation_z
-            t_camera_to_robot = np.array([[-0.04], [0.0], [0.03]])
+            t_camera_to_robot = np.array([[-0.04], [0.0], [0.04]])
             
             cameraPosition =   (-np.matrix(r_world_to_camera).T @  np.matrix(tvec))+t_camera_to_robot
             r_world_to_robot =  r_world_to_camera @ r_camera_to_robot

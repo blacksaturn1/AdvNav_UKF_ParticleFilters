@@ -33,12 +33,12 @@ class ParticleFilter:
         
         self.R = np.diag([
             .001, .001, .001,           # position (large if starting with vague initial pose)
-            np.deg2rad(75.0)**2,np.deg2rad(75.0)**2, np.deg2rad(75.0)**2           # orientation (low confidence)
+            np.deg2rad(5.0)**2,np.deg2rad(5.0)**2, np.deg2rad(5.0)**2           # orientation (low confidence)
         ])
         self.P = np.diag([
-            .15, .15, .15,           # position (large if starting with vague initial pose)
-            np.deg2rad(90.0)**2, np.deg2rad(90.0)**2, np.deg2rad(90.0)**2,           # orientation (in radians; small if initial orientation is known)
-            0.1, 0.1, 0.1,           # velocity (moderate confidence)
+            .1, .1, .1,           # position (large if starting with vague initial pose)
+            np.deg2rad(10.0)**2, np.deg2rad(10.0)**2, np.deg2rad(10.0)**2,           # orientation (in radians; small if initial orientation is known)
+            0.01, 0.01, 0.01,           # velocity
             
             0.01, 0.01, 0.01,      # gyro bias (smaller drift uncertainty if high-quality IMU)
             0.1, 0.1, 0.1        # accel bias (usually start near zero bias with modest uncertainty)
@@ -58,51 +58,7 @@ class ParticleFilter:
         self.weights = mvn.pdf(pos_and_orientation_diff)
         self.weights += 1e-300  # prevent divide by zero
         self.weights /= np.sum(self.weights)
-        # mvn = multivariate_normal( cov=self.measurement_cov )
-        # for i in range(self.num_particles):
-        #     residual = measurement.flatten() - self.particles[i, 0:6].flatten()  # position error for each particle    
-        #     self.weights[i] = mvn.pdf(residual)
-        # self.weights += 1e-300  # prevent divide by zero
-        # self.weights /= np.sum(self.weights)
-        # return self.weights
         
-
-        # # Compute error between particle state and measurement
-        # meas_pos = measurement[0:3].T      # shape (3,)
-        # meas_orient = measurement[3:6].T
-        # pos_diff = self.particles[:, 0:3] - meas_pos  # position error for each particle
-        # orient_diff = self.particles[:, 3:6] - meas_orient  # orientation error for each particle
-        # # orient_diff = normalize_angle(orient_diff)     # account for angle wrapping
-        
-        # # Measurement noise standard deviations
-        # pos_std = np.array([0.001, 0.001, 0.001])
-        # orient_std = np.array([0.001, 0.001, 0.001])
-        
-        # # Compute normalized squared errors
-        # pos_norm_err = (pos_diff / pos_std) ** 2       # element-wise squared error / variance
-        # orient_norm_err = (orient_diff / orient_std) ** 2
-        
-        # # Sum of squared errors across all dimensions (position + orientation)
-        # total_error = np.sum(pos_norm_err, axis=1) + np.sum(orient_norm_err, axis=1)
-        # # total_error = np.sum(pos_diff, axis=1) + np.sum(orient_diff, axis=1)
-        # #total_error = np.sum(pos_diff, axis=1) + orient_diff
-        
-        # # Compute likelihood for each particle: exp(-0.5 * total_error)
-        # likelihood = np.exp(-0.5 * total_error)
-        
-        # # Multiply by prior weight (Bayesian update)
-        # # new_weights = likelihood * self.weights
-        # # new_weights = likelihood * self.weights.reshape(1000,1)
-        # new_weights = likelihood * self.weights
-        # # Avoid all weights becoming zero (in case of extreme outlier measurement)
-        # if np.all(new_weights == 0):
-        #     new_weights = np.ones_like(new_weights) * 1e-12
-        
-        # # Normalize weights to sum to 1
-        # new_weights += 1e-300 
-        # new_weights = new_weights / np.sum(new_weights)
-        
-        # self.weights = new_weights
 
     def resample(self):
         N_eff = 1. / np.sum(self.weights**2)
@@ -130,8 +86,6 @@ class ParticleFilter:
         all[3:6] = np.array([avg_roll, avg_pitch, avg_yaw])
 
         return all
-    
-    # self.measurement_model = lambda x, measurement: np.exp(-np.linalg.norm(x - measurement) ** 2 / (2 * 0.1 ** 2))
     
     def init_state_sampler(self, num_particles, state_dim):
         # Implement the initialization of particles here
@@ -219,21 +173,22 @@ class ParticleFilter:
         U_a = (np.array([data['acc']]) + accel_bias_prev ).T
         Rq_matrix = self.Rq_matrix(x[3:6])
         g = np.array([[0, 0, 9.81]]).T
+        process_noise_velocity = np.random.multivariate_normal(mean=np.zeros(3), cov=np.diag([.01,.01,.01]))*dt
         xout[6:9] = (Rq_matrix.T @ U_a - g).squeeze() * dt
-
-        v = np.random.multivariate_normal(mean=np.zeros(3), cov=np.diag([.75,.75,.75]))*dt
-        xout[0] = (x[6] * dt + x[0]) +v[0]
-        xout[1] = (x[7] * dt + x[1]) +v[1]
-        xout[2] = (x[8] * dt + x[2]) +v[2]
-
+        xout[6:9] += process_noise_velocity
+        xout[0] = (x[6] * dt + x[0])
+        xout[1] = (x[7] * dt + x[1])
+        xout[2] = (x[8] * dt + x[2])
+        process_noise_position = np.random.multivariate_normal(mean=np.zeros(3), cov=np.diag([.75,.75,.75]))*dt
+        xout[0:3] += process_noise_position
         return xout
 
     def Rq_matrix(self, rpy):
         rotation_x = R.from_euler('x', rpy[0], degrees=False).as_matrix()
         rotation_y = R.from_euler('y', rpy[1], degrees=False).as_matrix()
         rotation_z = R.from_euler('z', rpy[2], degrees=False).as_matrix()
-        # r = rotation_z @ rotation_y @ rotation_x
-        r = rotation_x @ rotation_y @ rotation_z
+        r = rotation_z @ rotation_y @ rotation_x
+        # r = rotation_x @ rotation_y @ rotation_z
         return r
 
     def pose_to_rotation_matrix(self,rpy):

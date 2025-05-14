@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from measurement_data import MeasurementData
-from ukf_filter2 import UkfFilter2 as UkfFilter
+from ukf_filter import UkfFilter
 from particle_filter import ParticleFilter
 # import matplotlib.animation as animation
 
@@ -53,6 +53,7 @@ class Localization:
         )
         measurement_data = MeasurementData()
         position = None
+        orientation = None
         self.time = []
         self.results_np = None
         self.results_filtered_np = None
@@ -61,39 +62,42 @@ class Localization:
         dt = 0.
         time_last = 0.
         i=0
+        is_run_update = True
         for data in self.mat_contents['data']:
             
             if isinstance(data['id'],np.ndarray):
                 # This has no April tags found in the image
                 if len(data['id']) == 0:
-                    continue
+                    is_run_update = False
             # Estimate the pose for each item in the data
-            position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
+            if is_run_update:
+                position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
            
             if position is None or orientation is None:
-                print("Warning: Pose estimation failed for the current data item. Skipping this item.")
-                continue  # Skip this item if pose estimation failed
+                # print("Warning: Pose estimation failed for the current data item. Skipping this item.")
+                is_run_update = False  # Skip update of this item if pose estimation failed
             dt = data['t'] - time_last
-            if not is_initialized:
-                dt = 0.001
-                self.pf.particles[:,0:3] = np.tile(position, self.pf.num_particles).T
-                self.pf.particles[:,3:6] = np.tile(orientation.T, self.pf.num_particles).T
-                is_initialized = True
-                # self.pf.particles[:,9:12] = np.array([[0.0001,0.0001,0.0001]]).T
-                # self.pf.particles[:,12:15] = np.array([[0.0001,0.0001,0.0001]]).T    
+            if is_run_update and not is_initialized:
+                dt = 0.1
+                if position is not None or orientation is not None:
+                    self.pf.particles[:,0:3] = np.tile(position, self.pf.num_particles).T
+                    self.pf.particles[:,3:6] = np.tile(orientation.T, self.pf.num_particles).T
+                    self.pf.particles[:,9:12] = np.tile(np.array([[0.0001,0.0001,0.0001]]).T, self.pf.num_particles).T 
+                    self.pf.particles[:,12:15] = np.tile(np.array([[0.0001,0.0001,0.0001]]).T, self.pf.num_particles).T 
+                    is_initialized = True
             time_last = data['t']
-            # if time_last>15.0:
-                # break
+            
             self.pf.predict(dt,data)
-            z = np.hstack((np.array(position).T,orientation))
-            self.pf.update(z.T)
-            self.pf.resample()
+            if is_run_update:
+                z = np.hstack((np.array(position).T,orientation))
+                self.pf.update(z.T)
+                self.pf.resample()
+                result = np.hstack((np.array(position).T,orientation))
+                result = np.hstack((result, np.array([[data['t']]])))
+                self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
+            is_run_update = True
             filtered_state_x = self.pf.estimate()
-            result = np.hstack((np.array(position).T,orientation))
-            result = np.hstack((result, np.array([[data['t']]])))
             filtered_state_x = np.hstack((filtered_state_x, np.array([data['t']])))
-            # result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
-            self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
             self.results_filtered_np= filtered_state_x if self.results_filtered_np is None else np.vstack((self.results_filtered_np, filtered_state_x))
 
         
@@ -115,6 +119,7 @@ class Localization:
         """
         measurement_data = MeasurementData()
         position = None
+        orientation = None
         ekfFilter = UkfFilter(self.mat_contents)
         self.time = []
         self.results_np = None
@@ -123,36 +128,40 @@ class Localization:
         is_initialized = False
         dt = 0.
         time_last = 0.
+        is_run_update = True
         for data in self.mat_contents['data']:
             if isinstance(data['id'],np.ndarray):
                 # This has no April tags found in the image
                 if len(data['id']) == 0:
-                    continue
-            # Estimate the pose for each item in the data
-            position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
-            # if not is_initialized:
-            #     self.x[0:3] = position
-            #     self.x[3:6] = orientation.T
-            #     self.x[9:12] = np.array([[0.01,0.01,0.01]]).T
-            #     self.x[12:15] = np.array([[0.01,0.01,0.01]]).T
-            #     is_initialized = True
+                    is_run_update=False
+            if is_run_update:
+                # Estimate the pose for each item in the data
+                position,orientation = measurement_data.estimate_pose(data)  # Estimate the pose for each item in the data   
+            if not is_initialized:
+                if position is not None or orientation is not None:
+                    self.x[0:3] = position
+                    self.x[3:6] = orientation.T
+                    self.x[9:12] = np.array([[0.01,0.01,0.01]]).T
+                    self.x[12:15] = np.array([[0.01,0.01,0.01]]).T
+                    is_initialized = True
             if position is None or orientation is None:
-                print("Warning: Pose estimation failed for the current data item. Skipping this item.")
-                continue  # Skip this item if pose estimation failed
+                # print("Warning: Pose estimation failed for the current data item. Skipping this item.")
+                is_run_update = False  # Skip update of this item if pose estimation failed
             dt = data['t'] - time_last
             time_last = data['t']
             filtered_state_x = ekfFilter.predict(dt,data)
             
-            z = np.hstack((np.array(position).T,orientation))
-            filtered_state_x = ekfFilter.update(z.T)
-            result = np.hstack((np.array(position).T,orientation))
-            result = np.hstack((result, np.array([[data['t']]])))
+            if is_run_update:
+                result = np.hstack((np.array(position).T,orientation))
+                result = np.hstack((result, np.array([[data['t']]])))
+                self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
+                z = np.hstack((np.array(position).T,orientation))
+                filtered_state_x = ekfFilter.update(z.T)
+                
+            is_run_update = True
             filtered_state_x = np.hstack((filtered_state_x, np.array([data['t']])))
-            # result= np.hstack((np.array(position).squeeze(),orientation,data['t']))
-            self.results_np = result if self.results_np is None else np.vstack((self.results_np, result))
             self.results_filtered_np= filtered_state_x if self.results_filtered_np is None else np.vstack((self.results_filtered_np, filtered_state_x))
-        return self.results_np
-    
+        
     def plot_trajectory(self):
         """
         Plot the trajectory of the measurement data.
@@ -161,9 +170,6 @@ class Localization:
         self.__plot_trajectory_vicon__()
         self.__plot_trajectory_estimated__()
         self.__plot_trajectory_estimated_filtered__()
-
-
-
 
     def __plot_trajectory_vicon__(self):
         """
@@ -195,17 +201,12 @@ class Localization:
         self.ax = ax
         self.fig = fig
 
-         
     def __plot_trajectory_estimated__(self):
         """
         Plot the trajectory of the measurement data.
         :param data: Measurement data.
         """
-        # data = self.position_data
-        # self.measurement_position_data_np = np.array(data).squeeze().T
-
-        # Define the trajectory data (example)
-        # self.results_np.T.squeeze()[6,:]
+        # Define the trajectory data
         x = self.results_np.T.squeeze()[0,:]
         y = self.results_np.T.squeeze()[1,:]
         z = self.results_np.T.squeeze()[2,:]
@@ -222,7 +223,7 @@ class Localization:
         # Add a legend
         self.ax.legend()
 
-        # Show the plot
+        # Show the plot, commented for now
         # plt.show()
 
     def __plot_trajectory_estimated_filtered__(self):
@@ -230,11 +231,6 @@ class Localization:
         Plot the trajectory of the measurement data.
         :param data: Measurement data.
         """
-        # data = self.position_data
-        # self.measurement_position_data_np = np.array(data).squeeze().T
-
-        # Define the trajectory data (example)
-        # self.results_np.T.squeeze()[6,:]
         x = self.results_filtered_np.T.squeeze()[0,:]
         y = self.results_filtered_np.T.squeeze()[1,:]
         z = self.results_filtered_np.T.squeeze()[2,:]
@@ -258,15 +254,7 @@ class Localization:
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.particle_count}_{self.file}_trajectory_plot.png", dpi=300, bbox_inches='tight')    
         else:
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.file}_trajectory_plot.png", dpi=300, bbox_inches='tight')
-        # plt.close(self.fig)
-        # Show the plot
-        # plt.show()
-
-
-
-    
-
-
+        
     def plot_orientation(self):
         """
         Plot the trajectory of the measurement data.
@@ -282,9 +270,6 @@ class Localization:
         # Plot the trajectory
         self.fig, self.axs = plt.subplots(3, 1, figsize=(16, 16))
         self.fig.suptitle('Roll / Pitch / Yaw Plot')
-        # x = self.results_filtered_np.T.squeeze()[0,:]
-        # y = self.results_filtered_np.T.squeeze()[1,:]
-        # z = self.results_filtered_np.T.squeeze()[2,:]
         
         # Plot the trajectory
         self.axs[0].plot(x, roll, label='Actual', color='b', linewidth=1)  # Set color and linewidth for better visibility
@@ -321,7 +306,6 @@ class Localization:
             self.fig.savefig(f"./plots/{self.ukf_or_particle_filter}_{self.file}_orientation_plot.png", dpi=300, bbox_inches='tight')
         plt.close(self.fig)
         
-    
     def interpolate(self,time_target,t1, t2,y1, y2):
         """
         Interpolate the data to match the target time.
